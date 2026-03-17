@@ -14,7 +14,7 @@ v0=${BASH_VERSINFO[0]} v1=${BASH_VERSINFO[1]}
 (( 4 <= v0 )) && shopt -s compat32 # macOS uses bash 3.2
 
 flg_windows=false
-[[ $OSTYPE =~ ^(msys|cygwin) ]] && flg_windows=true ||
+[[ $OSTYPE =~ ^(msys|cygwin) ]] && flg_windows=true
 [[ $flg_windows != false ]] && export PATH="/usr/bin:$PATH" # for "sort"
 
 # quit - echo lines ($@) to the standard error and quit
