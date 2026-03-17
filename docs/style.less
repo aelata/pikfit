@@ -1,0 +1,95 @@
+// style.less
+//   create a symbolic link or a copy of this file in the .crossnote directory
+
+// (c) 2025 aelata
+// This code is licensed under the MIT No Attribution license (MIT-0).
+// https://opensource.org/license/mit-0
+
+.markdown-preview { // font settings of headings
+  h1 {
+    font-size: 1.75em;
+    font-weight: 600;
+    padding-bottom: 0.25em;
+  }
+  h2 {
+    font-size: 1.5em;
+    font-weight: 500;
+  }
+  h3 {
+    font-size: 1.25em;
+    font-weight: 500;
+  }
+  h4 {
+    font-size: 1.1em;
+    font-weight: 500;
+  }
+  h5 {
+    font-size: 1em;
+    font-weight: 500;
+  }
+  h1, h2, h3 {
+    break-after: avoid-page;
+  }
+}
+
+.markdown-preview  { // numbered headings
+  @counter-style fsty {
+    system: cyclic;
+    symbols: "";
+  }
+
+  @counter-style hsty {
+    system: fixed;
+    symbols:   "1."  "2."  "3."  "4."  "5."  "6."  "7."  "8."  "9." "10."
+              "11." "12." "13." "14." "15." "16." "17." "18." "19." "20."
+              "21." "22." "23." "24." "25." "26." "27." "28." "29." "30."
+              "31." "32." "33." "34." "35." "36." "37." "38." "39." "40."
+              "41." "42." "43." "44." "45." "46." "47." "48." "49." "50."
+              "51." "52." "53." "54." "55." "56." "57." "58." "59." "60."
+              "61." "62." "63." "64." "65." "66." "67." "68." "69." "70."
+              "71." "72." "73." "74." "75." "76." "77." "78." "79." "80."
+              "81." "82." "83." "84." "85." "86." "87." "88." "89." "90."
+              "91." "92." "93." "94." "95." "96." "97." "98." "99." "**.";
+    range: 1 100;
+    fallback: fsty;
+    /* suffix seems not working */
+  }
+
+  counter-reset: h1 h2 h3 h4 h5 h6;
+
+  h1:not(.unnumbered) { counter-set: h2 h3 h4 h5 h6; }
+  h2:not(.unnumbered) { counter-set: h3 h4 h5 h6; }
+  h3:not(.unnumbered) { counter-set: h4 h5 h6; }
+  h4:not(.unnumbered) { counter-set: h5 h6; }
+  h5:not(.unnumbered) { counter-set: h6; }
+
+  /*
+  h1:not(.unnumbered):before {
+    counter-increment: h1;
+    content: counter(h1, hsty) " ";
+  }
+  */ // You can reset counter invisibly with # and no following heading
+
+  h2:not(.unnumbered):before {
+    counter-increment: h2;
+    content: counter(h1, hsty) counter(h2, hsty) " ";
+  }
+  h3:not(.unnumbered):before {
+    counter-increment: h3;
+    content: counter(h1, hsty) counter(h2, hsty) counter(h3, hsty) " ";
+  }
+  h4:not(.unnumbered):before {
+    counter-increment: h4;
+    content: counter(h1, hsty) counter(h2, hsty) counter(h3, hsty) counter(h4, hsty) " ";
+  }
+  h5:not(.unnumbered):before {
+    counter-increment: h5;
+    content: counter(h1, hsty) counter(h2, hsty) counter(h3, hsty) counter(h4, hsty) counter(h5, hsty) " ";
+  }
+  /*
+  h6:not(.unnumbered):before {
+    counter-increment: h6;
+    content: counter(h1, hsty) counter(h2, hsty) counter(h3, hsty) counter(h4, hsty) counter(h5, hsty) counter(h6, hsty) " ";
+  }
+  */
+}

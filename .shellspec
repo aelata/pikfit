@@ -1,0 +1,5 @@
+--shell bash
+--execdir @specfile
+--format tap
+--reportdir spec/report
+--output tap

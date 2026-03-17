@@ -1,0 +1,495 @@
+#!/bin/bash
+
+# pikfit - wrap "pikchr" or "dpic" output in a "<figure>" tag
+VERSION="\
+pikfit version 0.8.0
+
+(c) 2026 aelata
+This script is licensed under the MIT No Attribution (MIT-0) License.
+https://opensource.org/license/mit-0
+"
+
+v0=${BASH_VERSINFO[0]} v1=${BASH_VERSINFO[1]}
+(( (5 == v0 && 2 <= v1) || 5 < v0 )) && shopt -u patsub_replacement
+(( 4 <= v0 )) && shopt -s compat32 # macOS uses bash 3.2
+
+# quit - echo lines ($@) to the standard error and quit
+quit() { printf "%s\n" "$@" >&2; exit 1; }
+
+# array_append_* should use namerefs instead of eval calls on bash 4.3 or later
+
+# array_append_file - append each line in a text file to an array
+array_append_file() { # $1: array name (global), $2: filename
+  [[ -s "$2" ]] || return 0 # skip if the file is empty or not found
+  [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || # validate variable name
+    quit "Internal error: invalid variable name: $1"
+  while IFS= read -r || [[ -n "$REPLY" ]]; do
+    eval "$1"'+=("$REPLY")'
+  done <"$2"
+  return 0
+}
+
+# array_append_str - append each word in a string to an array
+array_append_str() { # $1: array name (global), $2: string
+  [[ -n "$2" ]] || return 0 # skip if the string is empty
+  [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || # validate variable name
+    quit "Internal error: invalid variable name: $1"
+  while IFS= read -r; do
+    eval "$1"'+=("$REPLY")'
+  done < <(xargs printf "%s\n" <<<"$2") # use xargs to handle quote
+  return 0
+}
+
+# _brace_expand - expand brace patterns
+_brace_expand() { # $@: brace patterns
+  local -r ban=$'\n[:cntrl:];$`|<>&()'
+  if ! bash --restricted -o errexit -o noglob \
+         -c "IFS= builtin printf '%s\0' ${*//[$ban]/}"; then
+    quit "Internal error"
+  fi
+}
+
+# _brace_glob_expand - expand brace and glob patterns
+_brace_glob_expand() { #@: brace and glob patterns
+  # shellcheck disable=SC2086 # permit globbing
+  while IFS= read -r -d ''; do (
+    shopt -s nullglob; IFS= ; set -- $REPLY; (( $# )) && printf "%s\0" "$@";
+  ) done < <(_brace_expand "$@")
+}
+
+# array_append_brace_glob - append filenames that match patterns to an array
+#   requires quoted spaces in patterns, such as "'a b'.?"  ##"
+#   may be still not safe enough so do not use for external input
+array_append_glob() { # $1: array name (global), ${*:2}: patterns
+  [[ -n "$1" ]] || return 0 # skip if array name is empty
+  [[ $1 =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || # validate variable name
+    quit "Internal error: invalid variable name: $1"
+  while IFS= read -r -d ''; do
+    [[ -f "$REPLY" ]] && eval "$1"'+=("$REPLY")'
+  done < <(_brace_glob_expand "${@:2}") # use "| sort -zuV" to sort
+  return 0
+}
+
+# html_echo - echo lines ($@) with HTML escaping
+#   assume "shopt -u patsub_replacement" in bash 5.2 or later
+html_echo() {
+  local s
+  while (( $# )); do
+    s=${1//&/'&amp;'} s=${s//'"'/'&quot;'} s=${s//</'&lt;'} s=${s//>/'&gt;'}
+    echo "$s"
+    shift
+  done
+}
+
+# head1 - echo the first line of the command output (stdout/stderr)
+head1() { # $1: command, ${@:2}: arguments
+  local s
+  command -v "$1" &>/dev/null && read -r s < <("$1" "${@:2}" 2>&1)
+  echo "$s"
+}
+
+SCRIPT0=${BASH_SOURCE:-$0}
+SCRIPT=$(basename "$SCRIPT0")
+CMD=pikchr # CMD=dpic # default command
+
+arg_prefix="."           # -o PREFIX
+flg_prefix=false         #   keep output file
+arg_align="C"            # -A {L|C|R|N}
+arg_class="pikfit"       # -C CLASS
+arg_height="0"           # -H HEIGHT
+flg_keep=false           # -K
+arg_margin="0"           # -M MARGIN
+arg_width="0"            # -W WIDTH
+arg_alt="-"              # --alt=TEXT
+arg_capt=""              # --caption=TEXT
+arg_capt_align="-"       # --caption-align={L|C|R|-}
+arg_capt_text_align="-"  # --caption-text-align={L|C|R|-}
+flg_capt_top=false       # --caption-top
+flg_capt_wrap=false      # --caption-wrap
+arg_cmd=$CMD             # --cmd=PATH
+flg_dothide=false        # --dothide
+flg_enclose=false        # --enclose
+flg_m4=false             # --m4
+arg_m4=""                # --m4-args=ARGS
+
+flg_dark_mode=false      # --dark-mode
+
+usage() {
+  cat <<END
+$SCRIPT - wrap "pikchr" or "dpic" output in a "<figure>" tag
+
+Usage: $SCRIPT [options] file
+
+Options:
+  -o PREFIX       Set an output directory/file prefix and save the output file
+  -A {L|C|R|N}    Set figure alignment; Left|Center|Right|No ["$arg_align"]
+  -C CLASS        Set the class name of a figure ["$arg_class"]
+  -H HEIGHT       Set a figure height (0: auto/original) ["$arg_height"]
+  -K              Keep intermediate files
+  -M MARGIN       Add a margin ("pikchr" only) ["$arg_margin"]
+  -W WIDTH        Set a figure width (0: full/original) ["$arg_width"]
+  --alt TEXT      Set alternative text (-: caption) ["$arg_alt"]
+  --caption TEXT  Add a figure caption ["$arg_capt"]
+  --caption-align {L|C|R|-}
+                  Set caption alignment; Left|Center|Right|-figure \
+["$arg_capt_align"]
+  --caption-text-align {L|C|R|-}
+                  Set caption text alignment; Left|Center|Right|-caption \
+["$arg_capt_text_align"]
+  --caption-top   Place a caption above the figure
+  --caption-wrap  Wrap caption text to figure width
+  --cmd PATH      Set the path of "pikchr" or "dpic"
+  --dothide       Define the "hide" class
+  --dpic          Use "dpic" as a pic engine
+  --enclose       Add ".PS" and ".PE" before and after code ("dpic" only)
+  --m4            Preprocess code with m4
+  --m4-args ARGS  Set arguments for m4 (This option implies --m4)
+  --pikchr        Use "pikchr" as a pic engine (default)
+  -h, --help      Show this message and exit
+  -v, --version   Show version information and exit
+  -n, --dry-run   Do nothing and exit
+
+  Other options are passed to "pikchr" or "dpic"
+  Default options: PIKFIT_OPTS ["$PIKFIT_OPTS"]
+  Default m4 arguments: PIKFIT_M4 ["$PIKFIT_M4"]
+END
+}
+
+_parse_args() { # $@: args
+  local prev="" # previous argument
+  while (( $# )); do
+    if [[ -z "$prev" ]]; then
+      case $1 in
+      --) shift; break ;;
+      -A | -C | -H | -M | -W | --alt | --cmd | \
+      --caption | --caption-align | --caption-text-align | --m4-args)
+        prev=$1 ;;
+      -o) prev=$1 flg_prefix=true ;;
+      -K) flg_keep=true ;;
+      --alt=*) arg_alt=${1#*=} ;;
+      --caption=*) arg_capt=${1#*=} ;;
+      --caption-align=*) arg_capt_align=${1#*=} ;;
+      --caption-text-align=*) arg_capt_text_align=${1#*=} ;;
+      --caption-top) flg_capt_top=true ;;
+      --no-caption-top) flg_capt_top=false ;;
+      --caption-wrap) flg_capt_wrap=true ;;
+      --no-caption-wrap) flg_capt_wrap=false ;;
+      --cmd=*) arg_cmd=${1#*=} ;;
+      --dothide) flg_dothide=true ;;
+      --no-dothide) flg_dothide=false ;;
+      --enclose) flg_enclose=true ;;
+      --no-enclose) flg_enclose=false ;;
+      --m4) flg_m4=true ;;
+      --no-m4) flg_m4=false ;;
+      --m4-args=*) arg_m4=${1#*=} flg_m4=true ;;
+      --dark-mode) flg_dark_mode=true opts+=("$1") ;;
+      --no-dark-mode) flg_dark_mode=false opts=("${opts[@]/--dark-mode/}") ;;
+      --dpic) CMD=dpic arg_cmd=$CMD ;;
+      --pikchr) CMD=pikchr arg_cmd=$CMD ;;
+      *) opts+=("$1")
+      esac
+    else
+      case $prev in
+      -o) arg_prefix=$1 flg_prefix=true ;;
+      -A) arg_align=$1 ;;
+      -C) arg_class=$1 ;;
+      -H) arg_height=$1 ;;
+      -M) arg_margin=$1 ;;
+      -W) arg_width=$1 ;;
+      --alt) arg_alt=$1 ;;
+      --caption) arg_capt=$1 ;;
+      --caption-align) arg_capt_align=$1 ;;
+      --caption-text-align) arg_capt_text_align=$1 ;;
+      --cmd) arg_cmd=$1 ;;
+      --m4-args) arg_m4=$1 flg_m4=true ;;
+      *) quit "$SCRIPT: internal error: $prev $1"
+      esac
+      prev=""
+    fi
+    shift
+  done
+  [[ -z "$prev" ]] || quit "$SCRIPT: missing argument for \"$prev\""
+  while (( $# )); do opts+=("$1"); shift; done
+}
+
+parse_args() { # parse script arguments ($@)
+  args=() && array_append_str args "$PIKFIT_OPTS" # from environment variable
+  (( 1 < $# )) && args+=("${@:1:$#-1}") # from command line (except the last)
+
+  # Unusual options (valid only as the first argument)
+  [[ $1 == "-h" || $1 == "--help" || $# == 0 ]] && { usage; exit 0; }
+
+  # Usual options and pikchr options
+  opts=()
+  _parse_args "${args[@]}" # update opts
+
+  # Unusual options (valid only as the first argument)
+  [[ $1 == "-n" || $1 == "--dry-run" ]] && {
+    # echo "${PIKFIT_OPTS:+PIKFIT_OPTS=\"$PIKFIT_OPTS\" }$SCRIPT0$(printf " %q" "$@")"
+    exit 0
+  }
+  [[ $1 == "-v" || $1 == "--version" ]] && {
+    printf "%s\n" "${VERSION}" "$SCRIPT uses:"
+    _h1() { local s; s=$(head1 "$@"); echo "  $1: ${s:-command not found}"; }
+    _h1 pikchr --version
+    _h1 dpic -h
+    _h1 m4 --version
+    exit 0
+  }
+
+  # set CMD
+  [[ -d "$arg_cmd" ]] && CMD=${arg_cmd/%\//}/$CMD || CMD=$arg_cmd
+  case $(basename "$CMD") in # delete the first "." and anything after it
+  pikchr) EXT=pikchr ;;
+  dpic) EXT=pic ;;
+  *) quit "$SCRIPT0: unsupported command: $CMD"
+  esac
+  command -v "$CMD" &>/dev/null || quit "$SCRIPT: \"$CMD\" not found"
+
+  local -r re1="^[-+]?([0-9]|[.][0-9])"
+  local -r re2="^[-+]?([0-9]*)[.]?([0-9]*)(in|cm|px|pt|pc|mm)?$"
+  if [[ $arg_margin =~ $re1 && $arg_margin =~ $re2 ]]; then
+    (( ${BASH_REMATCH[1]:-0} == 0 && ${BASH_REMATCH[2]:-0} == 0 )) &&
+      arg_margin=0
+  else
+    quit "$SCRIPT: invalid margin: $arg_margin"
+  fi
+
+  arg_file=${!#} # the last argument
+  if [[ ! -f $arg_file ]]; then
+    [[ ${arg_file:0:1} != "/" && ${arg_file:1:1} != ":" ]] && # not full path
+      arg_file=${PWD/%\//}/$arg_file
+    quit "$SCRIPT: file not found: $arg_file"
+  fi
+
+  local s
+  s=$(basename "$arg_file" ".$EXT")
+  [[ $arg_prefix == "-" ]] && arg_prefix="." flg_prefix=false
+  if [[ $arg_prefix == "." ]]; then
+    arg_prefix=$PWD/$s
+  else
+    [[ $arg_prefix == */ && ! -d $arg_prefix ]] &&
+      quit "$SCRIPT: directory not found: $arg_prefix"
+    [[ -d "$arg_prefix" ]] &&
+      arg_prefix=${arg_prefix/%\//}/$s
+    [[ $arg_prefix != /* ]] &&
+      arg_prefix=${PWD/%\//}/$arg_prefix
+  fi
+
+  s=$(dirname "$arg_prefix")
+  [[ -d "$s" && -w "$s" ]] ||
+    quit "$SCRIPT: file not writable: $arg_prefix.svg"
+
+  arg_file_=$arg_prefix.$EXT
+  while [[ -f "$arg_file_" ]]; do # $arg_file_ must be non-existent file
+    arg_file_=${arg_file_/%.$EXT/_.$EXT}
+  done
+
+  [[ $arg_alt == "-" ]] && arg_alt=$arg_capt
+
+  arg_class=$(html_echo "$arg_class")
+  arg_height=$(html_echo "$arg_height")
+  arg_width=$(html_echo "$arg_width")
+  arg_alt=$(html_echo "$arg_alt")
+  arg_capt=$(html_echo "$arg_capt")
+}
+
+# put_svg - print a svg file while replacing some patterns
+put_svg() { # $1: filename, $2: additional style, $3: alternative text
+  local b s t flg_svg=false
+  a=() && array_append_file a "$1"
+  # make <svg> in one line
+  b=()
+  for s in "${a[@]}"; do
+    t=$s
+    [[ $t =~ \<svg ]] && b+=("") flg_svg=true
+    if [[ $flg_svg != false ]]; then
+      b[${#b[@]}-1]+=$s
+      while [[ $t =~ \"[^\"]*\" ]]; do t=${t/"${BASH_REMATCH[0]}"/}; done
+      while [[ $t =~ \'[^\']*\' ]]; do t=${t/"${BASH_REMATCH[0]}"/}; done
+      [[ $t =~ \> ]] && flg_svg=false
+    else
+      b+=("$s")
+    fi
+  done
+  # modify <svg> tag
+  a=()
+  for s in "${b[@]}"; do
+    if [[ $s =~ \<svg ]]; then
+      if [[ $EXT == pic && ( $arg_width != 0 || $arg_height != 0 ) ]]; then
+        # remove width and height
+        if   [[ $s =~ \ width\ *=\ *\"[^\"]*\" ]]; then
+          s=${s/"${BASH_REMATCH[0]}"/\ }
+        elif [[ $s =~ \ width\ *=\ *\'[^\']*\' ]]; then
+          s=${s/"${BASH_REMATCH[0]}"/\ }
+        fi
+        if   [[ $s =~ \ height\ *=\ *\"[^\"]*\" ]]; then
+          s=${s/"${BASH_REMATCH[0]}"/\ }
+        elif [[ $s =~ \ height\ *=\ *\'[^\']*\' ]]; then
+          s=${s/"${BASH_REMATCH[0]}"/\ }
+        fi
+      fi
+      if [[ -n "$2" ]]; then # append style
+        if   [[ $s =~ ^(<svg\ .*style\ *=\ *\")([^\"]*)(\".*)$ ]]; then
+          s="${BASH_REMATCH[1]}${BASH_REMATCH[2]:+${BASH_REMATCH[2]/%;/};}$2\
+${BASH_REMATCH[3]}"
+#         s="${BASH_REMATCH[1]}${BASH_REMATCH[2]/%;/};$2${BASH_REMATCH[3]}"
+        elif [[ $s =~ ^(<svg\ .*style\ *=\ *\')([^\']*)(\'.*)$ ]]; then
+          s="${BASH_REMATCH[1]}${BASH_REMATCH[2]:+${BASH_REMATCH[2]/%;/};}$2\
+${BASH_REMATCH[3]}"
+        fi
+      fi
+      [[ -n "$3" ]] && s="${s/<svg/<svg role="img" aria-label="$3"}" # alt text
+    fi
+    a+=("$s")
+  done
+  printf "%s\n" "${a[@]}"
+}
+
+# echo_align - normalize alignment
+echo_align() { # $1: alignment
+  local s=$1
+  case $s in
+  [Ll] | [Ll]eft) s="L" ;;
+  [Cc] | [Cc]enter) s="C" ;;
+  [Rr] | [Rr]ight) s="R" ;;
+  esac
+  echo "$s"
+}
+
+# put_fig - print a figure file
+put_fig() { # $1: filename
+  [[ -s "$1" ]] || return
+
+  case $arg_align in
+  [Nn] | NO | [Nn]o) arg_align=no ;;
+  esac
+  if [[ $arg_align != no ]]; then
+    local sty_fig="break-inside:avoid;\
+display:flex;flex-direction:column;margin:auto;"
+    local sty_svg sty_cap
+
+    [[ -n "$arg_width" && $arg_width != 0 ]] &&
+      sty_svg+="width:$arg_width;"
+    [[ -n "$arg_height" && $arg_height != 0 ]] &&
+      sty_svg+="height:$arg_height;"
+
+    arg_align=$(echo_align "$arg_align")
+    case $arg_align in
+    L) sty_svg+="margin-right:auto;" ;;
+    C) sty_svg+="margin:auto;" ;;
+    R) sty_svg+="margin-left:auto;" ;;
+    *) quit "$SCRIPT: unsupported alignment: -A $arg_align"
+    esac
+
+    [[ $arg_capt_align == "-" ]] && arg_capt_align=$arg_align
+    arg_capt_align=$(echo_align "$arg_capt_align")
+    if [[ $flg_capt_wrap == false ]]; then
+      case $arg_capt_align in
+      L) sty_cap+="margin-right:auto;" ;;
+      C) sty_cap+="margin:auto;" ;;
+      R) sty_cap+="margin-left:auto;" ;;
+      *) quit "$SCRIPT: unsupported alignment: --caption-align $arg_capt_align"
+      esac
+    else
+      sty_cap+=$sty_svg
+    fi
+
+    [[ $arg_capt_text_align == "-" ]] && arg_capt_text_align=$arg_capt_align
+    arg_capt_text_align=$(echo_align "$arg_capt_text_align")
+    case $arg_capt_text_align in
+    L) sty_cap+="text-align:left;" ;;
+    C) sty_cap+="text-align:center;" ;;
+    R) sty_cap+="text-align:right;" ;;
+    *) quit "$SCRIPT: unsupported alignment: \
+--caption-text-align $arg_capt_text_align"
+    esac
+
+    [[ $flg_dark_mode != false ]] &&
+      sty_fig+="color:white;background-color:black;"
+
+    echo "<figure class='$arg_class' style='$sty_fig'>"
+    [[ -n "$arg_capt" && $flg_capt_top != false ]] &&
+      echo "<figcaption style='$sty_cap'>$arg_capt</figcaption>"
+    put_svg "$1" "$sty_svg" "$arg_alt"
+    [[ -n "$arg_capt" && $flg_capt_top == false ]] &&
+      echo "<figcaption style='$sty_cap'>$arg_capt</figcaption>"
+    echo "</figure>"
+  else
+    put_svg "$1" "" "$arg_alt"
+  fi
+}
+
+# put_err - print an error message file
+put_err_txt() { # $1: filename
+  a=() && array_append_file a "$1"
+  (( ${#a[@]} )) || return
+  local sty="white-space:pre-wrap;background-color:${PIKFIT_ERR_BG_COL-#FDD};"
+  echo "<pre class='pikfit-err' style='$sty'>"
+  html_echo "${a[@]}"
+  echo "</pre>"
+}
+
+_pikfit() {
+  local prefix # output file prefix
+  a=() && array_append_file a "$arg_file"
+  [[ $EXT != pic && $arg_margin != 0 ]] && a+=("margin = $arg_margin;")
+  [[ $EXT == pic && $flg_enclose != false ]] && a=(".PS" "${a[@]}" ".PE")
+  dels+=("'$arg_file_'")
+  printf "%s\n" "${a[@]}" >"$arg_file_"
+  prefix=$(basename "$arg_file_" ".$EXT")
+  dels+=("'$prefix'.{cout,cerr}")
+  if [[ $flg_m4 != false ]]; then
+    command -v m4 &>/dev/null || quit "$SCRIPT: \"m4\" not found"
+    a=()
+    array_append_str a "$PIKFIT_M4"
+    array_append_str a "$arg_m4"
+    m4 "${a[@]}" "$arg_file_" </dev/null 1>"$prefix.cout" 2>"$prefix.cerr"
+    result=$?
+    if [[ $result != 0 ]]; then
+      if   [[ -s "$prefix.cerr" ]]; then
+        put_err_txt "$prefix.cerr" # unknown option
+      elif [[ -s "$prefix.cout" ]]; then
+        put_err_txt "$prefix.cout" # syntax error
+      fi
+      return
+    fi
+    cp "$prefix.cout" "$arg_file_"
+  fi
+
+  [[ $EXT == pic ]] && opts+=("-v") || opts+=("--svg-only")
+  "$CMD" "${opts[@]}" "$arg_file_" \
+    </dev/null 1>"$prefix.cout" 2>"$prefix.cerr"
+  result=$?
+
+  [[ $flg_dothide != false ]] &&
+    echo "<style> .hide { display: none; } </style>"
+
+  if [[ $result == 0 ]]; then
+    put_fig "$prefix.cout"
+    [[ $flg_prefix != false ]] && cp "$prefix.cout" "$arg_prefix.svg"
+  else
+    if   [[ -s "$prefix.cerr" ]]; then
+      put_err_txt "$prefix.cerr" # unknown option
+    elif [[ -s "$prefix.cout" ]]; then
+      put_err_txt "$prefix.cout" # syntax error
+    fi
+  fi
+}
+
+# delete_glob - delete files from glob patterns
+delete_glob() { # $@: glob patterns
+  a=() && array_append_glob a "$@"
+  (( ${#a[@]} )) && rm -f -- "${a[@]}" 2>/dev/null
+}
+
+main() { # $@: script arguments
+  parse_args "$@"
+  dels=() # patterns of the intermediate files to be deleted
+  trap '[[ $flg_keep == false ]] && delete_glob "${dels[@]}"' \
+    EXIT HUP INT QUIT ABRT ILL SEGV TERM
+  _pikfit
+  return 0
+}
+
+[[ ${BASH_SOURCE[0]} != "$0" ]] || main "$@" # skip if sourced (return 0)

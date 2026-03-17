@@ -1,0 +1,6 @@
+/docs/**/*.html
+/README.txt
+/*.md
+/pikfit.sh
+/.shellspec-quick.log
+/spec/report/results.tap
