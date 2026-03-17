@@ -7,14 +7,21 @@ ifneq ($(MFD), $(CWD))
   $(error Run make in $(MFD))
 endif
 
+# ENTRANCE and TARGET are tracked in gh-pages but not in main (.gitignore)
 ENTRANCE = README.txt docs/index.html
 TARGET = $(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
+# IMG is tracked both in main and gh-pages
 IMG = $(shell find docs -name '*.png') # -or -name '*.jpg'
+
+PAGES = $(ENTRANCE) $(TARGET) $(IMG)
 
 all: $(TARGET)
 
 %.html: %.md
 	@echo $@ is out of date.
+
+clean:
+	rm -f $(TARGET)
 
 gh-pages:
 	@if make -q all; then \
@@ -22,10 +29,10 @@ gh-pages:
 		git branch -D gh-pages 2>/dev/null || true && \
 		git switch --orphan gh-pages && \
 		git restore --source=main --overlay -- $(IMG) && \
-		git add -f $(ENTRANCE) $(TARGET) $(IMG) && \
+		git add -f $(PAGES) && \
 		git commit -m "Update html" && \
 		git switch main && \
-		git restore --source=gh-pages --overlay -- $(ENTRANCE) $(TARGET) $(IMG); \
+		git restore --source=gh-pages --overlay -- $(PAGES); \
 	else \
 		echo "Any file in TARGET is out of date."; \
 		exit 1; \
@@ -39,5 +46,5 @@ push-gh-pages:
 		exit 1; \
 	fi
 
-clean:
-	rm -f $(TARGET)
+overlay-gh-pages:
+	@git restore --source=gh-pages --overlay -- $(PAGES)
