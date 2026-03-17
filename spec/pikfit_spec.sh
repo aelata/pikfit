@@ -17,7 +17,7 @@ END
 define(`Hello', ``Hi'')
 END
 
-  It 'wraps the "pikchr" output in a "<figure>" tag.'
+  It 'wraps pikchr/dpic output in a <figure> tag.'
     When run $CMD test.pikchr
 
     The status should be success
@@ -127,7 +127,7 @@ END
     The output should include "</figure>"
   End
 
-  It 'uses "pikchr" as a pic engine with "--pikchr" (default).'
+  It 'uses pikchr as a pic engine with "--pikchr" (default).'
     When run $CMD --pikchr test.pikchr
 
     The status should be success
@@ -136,7 +136,7 @@ END
     The output should include "</figure>"
   End
 
-  It 'uses "dpic" as a pic engine with "--dpic".'
+  It 'uses dpic as a pic engine with "--dpic".'
     When run $CMD --dpic test.pic
 
     The status should be success
