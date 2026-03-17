@@ -8,6 +8,7 @@ ifneq ($(MFD), $(CWD))
 endif
 
 TARGET=$(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
+IMG=$(shell find docs -name '*.png')
 
 all: $(TARGET)
 
@@ -19,10 +20,11 @@ gh-pages:
 		git switch main && \
 		git branch -D gh-pages 2>/dev/null || true && \
 		git switch --orphan gh-pages && \
-		git add -f README.txt docs/index.html docs/pikfit.png $(TARGET) && \
+		git restore --source=main --overlay -- $(IMG) && \
+		git add -f README.txt docs/index.html $(TARGET) $(IMG) && \
 		git commit -m "Update html" && \
 		git switch main && \
-		git restore --source=gh-pages --overlay -- README.txt "*.html" "*.png"; \
+		git restore --source=gh-pages --overlay -- README.txt $(TARGET) $(IMG); \
 	else \
 		echo "Any file in TARGET is out of date."; \
 		exit 1; \
