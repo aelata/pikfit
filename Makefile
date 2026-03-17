@@ -19,10 +19,10 @@ gh-pages:
 		git switch main && \
 		git branch -D gh-pages 2>/dev/null || true && \
 		git switch --orphan gh-pages && \
-		git add -f README.txt docs/index.html $(TARGET) && \
+		git add -f README.txt docs/index.html docs/pikfit.png $(TARGET) && \
 		git commit -m "Update html" && \
 		git switch main && \
-		git restore --source=gh-pages --overlay -- README.txt "*.html"; \
+		git restore --source=gh-pages --overlay -- README.txt "*.html" "*.png"; \
 	else \
 		echo "Any file in TARGET is out of date."; \
 		exit 1; \
