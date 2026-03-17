@@ -7,8 +7,9 @@ ifneq ($(MFD), $(CWD))
   $(error Run make in $(MFD))
 endif
 
-TARGET=$(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
-IMG=$(shell find docs -name '*.png') # -or -name '*.jpg'
+ENTRANCE = README.txt docs/index.html
+TARGET = $(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
+IMG = $(shell find docs -name '*.png') # -or -name '*.jpg'
 
 all: $(TARGET)
 
@@ -21,10 +22,10 @@ gh-pages:
 		git branch -D gh-pages 2>/dev/null || true && \
 		git switch --orphan gh-pages && \
 		git restore --source=main --overlay -- $(IMG) && \
-		git add -f README.txt docs/index.html $(TARGET) $(IMG) && \
+		git add -f $(ENTRANCE) $(TARGET) $(IMG) && \
 		git commit -m "Update html" && \
 		git switch main && \
-		git restore --source=gh-pages --overlay -- README.txt $(TARGET) $(IMG); \
+		git restore --source=gh-pages --overlay -- $(ENTRANCE) $(TARGET) $(IMG); \
 	else \
 		echo "Any file in TARGET is out of date."; \
 		exit 1; \
