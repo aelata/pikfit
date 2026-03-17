@@ -130,7 +130,6 @@ Options:
   -C CLASS        Set the class name of a figure ["$arg_class"]
   -H HEIGHT       Set a figure height (0: auto/original) ["$arg_height"]
   -K              Keep intermediate files
-  -M MARGIN       Add a margin (pikchr only) ["$arg_margin"]
   -W WIDTH        Set a figure width (0: full/original) ["$arg_width"]
   --alt TEXT      Set alternative text (-: caption) ["$arg_alt"]
   --caption TEXT  Add a figure caption ["$arg_capt"]
@@ -144,15 +143,17 @@ Options:
   --caption-wrap  Wrap caption text to figure width
   --cmd PATH      Set the path of pikchr/dpic
   --dothide       Define the "hide" class
-  --dpic          Use dpic as a pic engine
-  --enclose       Add ".PS" and ".PE" before and after code (dpic only)
   --m4            Preprocess code with m4
   --m4-args ARGS  Set arguments for m4 (This option implies --m4)
-  --pikchr        Use pikchr as a pic engine (default)
   --              Option-end delimiter
   -h, --help      Show this message and exit
   -v, --version   Show version information and exit
   -n, --dry-run   Do nothing and exit
+
+  --pikchr        Use pikchr as a pic engine (This option resets --cmd)
+    -M MARGIN     Add a margin (pikchr only) ["$arg_margin"]
+  --dpic          Use dpic as a pic engine (This option resets --cmd)
+    --enclose     Add ".PS" and ".PE" before and after code (dpic only)
 
   Other options are passed to pikchr/dpic
   Default options: PIKFIT_OPTS ["$PIKFIT_OPTS"]
@@ -242,13 +243,12 @@ parse_args() { # parse script arguments ($@)
     exit 0
   }
 
-  # set CMD
-  [[ -d "$arg_cmd" ]] && CMD=${arg_cmd/%\//}/$CMD || CMD=$arg_cmd
-  case $(basename "$CMD") in # delete the first "." and anything after it
+  case $CMD in
   pikchr) EXT=pikchr ;;
   dpic) EXT=pic ;;
   *) quit "$SCRIPT0: unsupported command: $CMD"
   esac
+  [[ -d "$arg_cmd" ]] && CMD=${arg_cmd/%\//}/$CMD || CMD=$arg_cmd
   command -v "$CMD" &>/dev/null || quit "$SCRIPT: \"$CMD\" not found"
 
   local -r re1="^[-+]?([0-9]|[.][0-9])"
