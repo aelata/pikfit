@@ -81,7 +81,7 @@ Describe 'utils:'
   End
 
   Describe '"array_append_glob"'
-    It "appends the name of existing files to a global array."
+    It "appends the names of existing files to a global array."
       FILES="a.{1,2,5,7} b.1"
       eval touch $FILES
       a=()
@@ -95,17 +95,17 @@ Describe 'utils:'
       eval rm -rf "$FILES"
     End
 
-    It "appends filenames, which may not unique or sorted (without \"| sort -zuV\")."
+    It "appends unique and sorted names of existing files."
       FILES="a.{1,2,5,7} b.1"
       eval touch $FILES
       p=("b.1" "a.3" "a.5" "a.1" "b.1")
       a=()
       array_append_glob a "${p[@]}"
 
-      The variable a[*] should equal "b.1 a.5 a.1 b.1"
-      The variable a[0] should equal "b.1"
-      The variable a[3] should equal "b.1"
-      The variable a[4] should be undefined
+      The variable a[*] should equal "a.1 a.5 b.1"
+      The variable a[0] should equal "a.1"
+      The variable a[2] should equal "b.1"
+      The variable a[3] should be undefined
 
       eval rm -rf "$FILES"
     End
@@ -117,9 +117,9 @@ Describe 'utils:'
       a=()
       array_append_glob a "${p[@]}"
 
-      The variable a[*] should equal "a.2 c.2 a.11 b.11 d.11 a.4 a.5"
+      The variable a[*] should equal "a.2 a.4 a.5 a.11 b.11 c.2 d.11"
       The variable a[0] should equal "a.2"
-      The variable a[4] should equal "d.11"
+      The variable a[4] should equal "b.11"
       The variable a[7] should be undefined
 
       eval rm -rf "$FILES"
@@ -132,9 +132,9 @@ Describe 'utils:'
       a=()
       array_append_glob a "${p[@]}"
 
-      The variable a[*] should equal "b.7 b.9 b.2 b.3 b.4"
-      The variable a[0] should equal "b.7"
-      The variable a[4] should equal "b.4"
+      The variable a[*] should equal "b.2 b.3 b.4 b.7 b.9"
+      The variable a[0] should equal "b.2"
+      The variable a[4] should equal "b.9"
       The variable a[5] should be undefined
 
       eval rm -rf "$FILES"
@@ -147,11 +147,10 @@ Describe 'utils:'
       a=()
       array_append_glob a "${p[@]}"
 
-      The variable a[*] should equal "a.1 b.1 a.3 b.3 a.3 ab.3 b.3"
-      The variable a[0] should equal "a.1"
-      The variable a[3] should equal "b.3"
-      The variable a[6] should equal "b.3"
-      The variable a[7] should be undefined
+      The variable a[*] should equal "ab.3 a.1 a.3 b.1 b.3"
+      The variable a[0] should equal "ab.3"
+      The variable a[4] should equal "b.3"
+      The variable a[5] should be undefined
 
       eval rm -rf "$FILES"
     End
@@ -163,10 +162,10 @@ Describe 'utils:'
       a=()
       array_append_glob a "${p[@]}"
 
-      The variable a[*] should equal "a b.1 a b.2 a b.3 a b.3 b c.3"
+      The variable a[*] should equal "a b.1 a b.2 a b.3 b c.3"
       The variable a[0] should equal "a b.1"
-      The variable a[4] should equal "b c.3"
-      The variable a[5] should be undefined
+      The variable a[3] should equal "b c.3"
+      The variable a[4] should be undefined
 
       eval rm -rf $FILES
     End

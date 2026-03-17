@@ -13,6 +13,10 @@ v0=${BASH_VERSINFO[0]} v1=${BASH_VERSINFO[1]}
 (( (5 == v0 && 2 <= v1) || 5 < v0 )) && shopt -u patsub_replacement
 (( 4 <= v0 )) && shopt -s compat32 # macOS uses bash 3.2
 
+flg_windows=false
+[[ $OSTYPE =~ ^(msys|cygwin) ]] && flg_windows=true ||
+[[ $flg_windows != false ]] && export PATH="/usr/bin:$PATH" # for "sort"
+
 # quit - echo lines ($@) to the standard error and quit
 quit() { printf "%s\n" "$@" >&2; exit 1; }
 
@@ -66,7 +70,7 @@ array_append_glob() { # $1: array name (global), ${*:2}: patterns
     quit "Internal error: invalid variable name: $1"
   while IFS= read -r -d ''; do
     [[ -f "$REPLY" ]] && eval "$1"'+=("$REPLY")'
-  done < <(_brace_glob_expand "${@:2}") # use "| sort -zuV" to sort
+  done < <(_brace_glob_expand "${@:2}" | sort -zuV) # unique and version sort
   return 0
 }
 
@@ -145,6 +149,7 @@ Options:
   --m4            Preprocess code with m4
   --m4-args ARGS  Set arguments for m4 (This option implies --m4)
   --pikchr        Use pikchr as a pic engine (default)
+  --              Option-end delimiter
   -h, --help      Show this message and exit
   -v, --version   Show version information and exit
   -n, --dry-run   Do nothing and exit
