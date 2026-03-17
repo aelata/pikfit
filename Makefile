@@ -8,7 +8,7 @@ ifneq ($(MFD), $(CWD))
 endif
 
 TARGET=$(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
-IMG=$(shell find docs -name '*.png')
+IMG=$(shell find docs -name '*.png') # -or -name '*.jpg'
 
 all: $(TARGET)
 
