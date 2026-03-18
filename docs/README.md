@@ -108,6 +108,7 @@ You can include and execute a file written in the pic language with `@import` of
 
 ## See also
 * See [pikfit.md](pikfit.md) for the options and additional details about `pikfit`.
+* [Some examples](example.md).
 
 ## Copyright and license
 
