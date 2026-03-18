@@ -438,8 +438,11 @@ put_err_txt() { # $1: filename
 _pikfit() {
   local prefix # output file prefix
   a=() && array_append_file a "$arg_file"
-  [[ $EXT != pic && $arg_margin != 0 ]] && a+=("margin = $arg_margin;")
-  [[ $EXT == pic && $flg_enclose != false ]] && a=(".PS" "${a[@]}" ".PE")
+  case $EXT in
+  pikchr) [[ $arg_margin != 0 ]] && a+=("margin = $arg_margin;") ;;
+  pic) [[ $flg_enclose != false ]] && a=(".PS" "${a[@]}" ".PE") ;;
+  *) quit "Internal error: unknown extension: $EXT"
+  esac
   dels+=("'$arg_file_'")
   printf "%s\n" "${a[@]}" >"$arg_file_"
   prefix=$(basename "$arg_file_" ".$EXT")
@@ -462,7 +465,11 @@ _pikfit() {
     cp "$prefix.cout" "$arg_file_"
   fi
 
-  [[ $EXT == pic ]] && opts+=("-v") || opts+=("--svg-only")
+  case $EXT in
+  pikchr) opts+=("--svg-only") ;;
+  pic) opts+=("-v") ;;
+  *) quit "Internal error: unknown extension: $EXT"
+  esac
   "$CMD" "${opts[@]}" "$arg_file_" \
     </dev/null 1>"$prefix.cout" 2>"$prefix.cerr"
   result=$?
