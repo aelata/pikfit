@@ -2,7 +2,7 @@
 
 <style>code { white-space: pre-wrap !important; } </style>
 
-With `pikfit`, you can easily embed figures written in the pic language into a Markdown document. You can use [pikchr](https://pikchr.org) or [dpic](https://www.ece.uwaterloo.ca/~aplevich/dpic) as a pic engine and optionally [m4](https://www.gnu.org/software/m4) as a macro processor. Embedding the figures uses the [code chunk](https://shd101wyy.github.io/markdown-preview-enhanced/#/code-chunk) feature of [Markdown Preview Enhanced (MPE)](https://shd101wyy.github.io/markdown-preview-enhanced), an extension for [Visual Studio Code (VS Code)](https://code.visualstudio.com). `pikfit` is a bash script that wraps `pikchr`/`dpic` output in a `<figure>` tag.
+With `pikfit`, you can easily embed figures written in the pic language into a Markdown document. You can use [pikchr](https://pikchr.org) or [dpic](https://www.ece.uwaterloo.ca/~aplevich/dpic) as a pic engine and optionally [m4](https://www.gnu.org/software/m4) as a macro processor. You can also use [gnuplot](http://www.gnuplot.info) in place of a pic engine. Embedding the figures uses the [code chunk](https://shd101wyy.github.io/markdown-preview-enhanced/#/code-chunk) feature of [Markdown Preview Enhanced (MPE)](https://shd101wyy.github.io/markdown-preview-enhanced), an extension for [Visual Studio Code (VS Code)](https://code.visualstudio.com). `pikfit` is a bash script that wraps `pikchr`/`dpic` output in a `<figure>` tag.
 
 ```tcl {cmd=env args=[pikfit -H 8lh --caption "Flow diagram of pikfit" --dothide] output=html .hide}
 arrow " md" ljust down 1.5cm; A: box "MPE" "(VS Code)";
@@ -31,7 +31,7 @@ arrow down 0.75cm from 1/2 <D.s, D.se> " pic" ljust;
 
     In the VS Code settings, `Markdown-preview-enhanced: Enable Script Execution` must be selected; it is not selected by default.
 
-* run the `pikchr` or `dpic` command
+* run the `pikchr`, `dpic`, or `gnuplot` command
 
     On Windows, you can copy `pikchr.exe` from [the binary package of pikchr](https://packages.msys2.org/base/mingw-w64-pikchr) to `/usr/bin` in the Git for Windows environment. You can copy `dpic.exe` from [here](https://ece.uwaterloo.ca/~aplevich/dpic/Windows).
     On macOS, you may have to build `pikchr` from source. You can install `dpic` with [Homebrew](https://formulae.brew.sh/formula/dpic).
@@ -122,12 +122,23 @@ line to V.s; corner;
 move left 0.3 from V.w # manually expand bbox to the left for text V_0
 ```
 
+### gnuplot
+
+You can use `gnuplot` in place of a pic engine with `--gnuplot`. Specifying `--term-opts`*`OPTS`* sets the terminal options for SVG output.
+
+```tcl {cmd=env args=[pikfit -H 10lh --gnuplot --term-opts='font "Times" fontscale 2'] output=html}
+# {cmd=env args=[pikfit -H 10lh --gnuplot --term-opts='font "Times" fontscale 2'] output=html}
+unset key
+set tic out nomirror
+plot sin(x)
+```
+
 ### File importing
 
 You can include and execute a file written in the pic language with `@import` of MPE.
 
 ```markdown
-@import "fig.pikchr" {as=tcl cmd=env args=[pikchr] output=html}
+@import "fig.pikchr" {as=tcl cmd=env args=[pikfit] output=html}
 ```
 
 ## Options
@@ -146,9 +157,6 @@ You can include and execute a file written in the pic language with `@import` of
 
 `-K`
 : Keep intermediate files.
-
-`-M MARGIN`
-: Set a margin to *`MARGIN`*. This option is only valid for `pikchr`.
 
 `-W WIDTH`
 : Set the width of a figure to *`WIDTH`*. The value `0` means the full width for `pikchr` and the original width for `dpic`. The default value is `0`.
@@ -177,12 +185,6 @@ You can include and execute a file written in the pic language with `@import` of
 `--dothide`
 : Define the hide class (`.hide`), which is used to avoid [the MPE issue of the code chunk hide option](https://github.com/shd101wyy/vscode-markdown-preview-enhanced/issues/1893).
 
-`--dpic`
-: Use `dpic` as a pic engine. This option resets the previous setting by `--cmd`.
-
-`--enclose`
-: Add `.PS` and `.PE` before and after code. This option is only valid for `dpic`.
-
 `--m4`
 : Preprocess code with `m4`.
 
@@ -192,9 +194,24 @@ You can include and execute a file written in the pic language with `@import` of
 `--pikchr`
 : Use `pikchr` as a pic engine (default). This option resets the previous setting by `--cmd`.
 
+`-M MARGIN`
+: Add a margin *`MARGIN`* to a `pikchr` figure.
+
+`--dpic`
+: Use `dpic` as a pic engine. This option resets the previous setting by `--cmd`.
+
+`--enclose`
+: Add `.PS` and `.PE` before and after the code of `dpic`.
+
+`--gnuplot`
+: Use `gnuplot` in place of a pic engine. This option resets the previous setting by `--cmd`.
+
+`--term-opts OPTS`
+: Set terminal options for SVG output of `gnuplot`.
+
 Additionally, the following options are available if specified as the first argument: `-h`, `--help` (show usage and exit), `-v`, `--version` (show version information and exit), and `-n`, `--dry-run` (do nothing and exit).
 
-Other options are passed to `pikchr` or `dpic`. For this behavior, short options cannot be combined (use `-K -A R` instead of `-KA R`, for example). Also, a short option and its argument must be separated by spaces (use `-A R` instead of `-AR`, for example).
+Other options are passed to `pikchr`, `dpic`, or `gnuplot`. For this behavior, short options cannot be combined (use `-K -A R` instead of `-KA R`, for example). Also, a short option and its argument must be separated by spaces (use `-A R` instead of `-AR`, for example).
 
 ## Environment variables
 

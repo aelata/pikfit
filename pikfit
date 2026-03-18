@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# pikfit - wrap pikchr/dpic output in a <figure> tag
+# pikfit - wrap pikchr/dpic/gnuplot output in a <figure> tag
 VERSION="\
 pikfit version 0.8.0
 
@@ -102,25 +102,29 @@ arg_align="C"            # -A {L|C|R|N}
 arg_class="pikfit"       # -C CLASS
 arg_height="0"           # -H HEIGHT
 flg_keep=false           # -K
-arg_margin="0"           # -M MARGIN
 arg_width="0"            # -W WIDTH
-arg_alt="-"              # --alt=TEXT
-arg_capt=""              # --caption=TEXT
-arg_capt_align="-"       # --caption-align={L|C|R|-}
-arg_capt_text_align="-"  # --caption-text-align={L|C|R|-}
+arg_alt="-"              # --alt TEXT
+arg_capt=""              # --caption TEXT
+arg_capt_align="-"       # --caption-align {L|C|R|-}
+arg_capt_text_align="-"  # --caption-text-align {L|C|R|-}
 flg_capt_top=false       # --caption-top
 flg_capt_wrap=false      # --caption-wrap
-arg_cmd=$CMD             # --cmd=PATH
+arg_cmd=$CMD             # --cmd PATH
 flg_dothide=false        # --dothide
-flg_enclose=false        # --enclose
 flg_m4=false             # --m4
-arg_m4=""                # --m4-args=ARGS
+arg_m4=""                # --m4-args ARGS
 
+# pikchr
+arg_margin="0"           # -M MARGIN
 flg_dark_mode=false      # --dark-mode
+# dpic
+flg_enclose=false        # --enclose
+# gnuplot
+arg_term_opts=""         # --term-opts OPTS
 
 usage() {
   cat <<END
-$SCRIPT - wrap pikchr/dpic output in a <figure> tag
+$SCRIPT - wrap pikchr/dpic/gnuplot output in a <figure> tag
 
 Usage: $SCRIPT [options] file
 
@@ -141,7 +145,7 @@ Options:
 ["$arg_capt_text_align"]
   --caption-top   Place a caption above the figure
   --caption-wrap  Wrap caption text to figure width
-  --cmd PATH      Set the path of pikchr/dpic
+  --cmd PATH      Set the path of the command
   --dothide       Define the "hide" class
   --m4            Preprocess code with m4
   --m4-args ARGS  Set arguments for m4 (This option implies --m4)
@@ -154,8 +158,11 @@ Options:
     -M MARGIN     Add a margin (pikchr only) ["$arg_margin"]
   --dpic          Use dpic as a pic engine (This option resets --cmd)
     --enclose     Add ".PS" and ".PE" before and after code (dpic only)
+  --gnuplot       Use gnuplot (This option resets --cmd)
+    --term-opts OPTS
+                  Set terminal options for SVG output (gnuplot only)
 
-  Other options are passed to pikchr/dpic
+  Other options are passed to pikchr/dpic/gnuplot
   Default options: PIKFIT_OPTS ["$PIKFIT_OPTS"]
   Default m4 arguments: PIKFIT_M4 ["$PIKFIT_M4"]
 END
@@ -167,8 +174,9 @@ _parse_args() { # $@: args
     if [[ -z "$prev" ]]; then
       case $1 in
       --) shift; break ;;
-      -A | -C | -H | -M | -W | --alt | --cmd | \
-      --caption | --caption-align | --caption-text-align | --m4-args)
+      -A | -C | -H | -W | --alt | --cmd | \
+      --caption | --caption-align | --caption-text-align | --m4-args | \
+      -M | --term-opts)
         prev=$1 ;;
       -o) prev=$1 flg_prefix=true ;;
       -K) flg_keep=true ;;
@@ -183,15 +191,18 @@ _parse_args() { # $@: args
       --cmd=*) arg_cmd=${1#*=} ;;
       --dothide) flg_dothide=true ;;
       --no-dothide) flg_dothide=false ;;
-      --enclose) flg_enclose=true ;;
-      --no-enclose) flg_enclose=false ;;
       --m4) flg_m4=true ;;
       --no-m4) flg_m4=false ;;
       --m4-args=*) arg_m4=${1#*=} flg_m4=true ;;
-      --dark-mode) flg_dark_mode=true opts+=("$1") ;;
-      --no-dark-mode) flg_dark_mode=false opts=("${opts[@]/--dark-mode/}") ;;
-      --dpic) CMD=dpic arg_cmd=$CMD ;;
+      # command specific options
       --pikchr) CMD=pikchr arg_cmd=$CMD ;;
+        --dark-mode) flg_dark_mode=true opts+=("$1") ;;
+        --no-dark-mode) flg_dark_mode=false opts=("${opts[@]/--dark-mode/}") ;;
+      --dpic) CMD=dpic arg_cmd=$CMD ;;
+        --enclose) flg_enclose=true ;;
+        --no-enclose) flg_enclose=false ;;
+      --gnuplot) CMD=gnuplot arg_cmd=$CMD ;;
+        --term-opts=*) arg_term_opts=${1#*=} ;;
       *) opts+=("$1")
       esac
     else
@@ -200,7 +211,6 @@ _parse_args() { # $@: args
       -A) arg_align=$1 ;;
       -C) arg_class=$1 ;;
       -H) arg_height=$1 ;;
-      -M) arg_margin=$1 ;;
       -W) arg_width=$1 ;;
       --alt) arg_alt=$1 ;;
       --caption) arg_capt=$1 ;;
@@ -208,6 +218,9 @@ _parse_args() { # $@: args
       --caption-text-align) arg_capt_text_align=$1 ;;
       --cmd) arg_cmd=$1 ;;
       --m4-args) arg_m4=$1 flg_m4=true ;;
+      # command specific options
+      -M) arg_margin=$1 ;;
+      --term-opts) arg_term_opts=$1 ;;
       *) quit "$SCRIPT: internal error: $prev $1"
       esac
       prev=""
@@ -239,16 +252,18 @@ parse_args() { # parse script arguments ($@)
     _h1() { local s; s=$(head1 "$@"); echo "  $1: ${s:-command not found}"; }
     _h1 pikchr --version
     _h1 dpic -h
+    _h1 gnuplot --version
     _h1 m4 --version
     exit 0
   }
 
-  case $CMD in
-  pikchr) EXT=pikchr ;;
-  dpic) EXT=pic ;;
+  [[ -d "$arg_cmd" ]] && CMD=${arg_cmd/%\//}/$CMD || CMD=$arg_cmd
+  case $(basename "$CMD") in
+  pikchr*) EXT=pikchr ;;
+  dpic*) EXT=pic ;;
+  gnuplot*) EXT=gp ;;
   *) quit "$SCRIPT0: unsupported command: $CMD"
   esac
-  [[ -d "$arg_cmd" ]] && CMD=${arg_cmd/%\//}/$CMD || CMD=$arg_cmd
   command -v "$CMD" &>/dev/null || quit "$SCRIPT: \"$CMD\" not found"
 
   local -r re1="^[-+]?([0-9]|[.][0-9])"
@@ -321,17 +336,19 @@ put_svg() { # $1: filename, $2: additional style, $3: alternative text
   a=()
   for s in "${b[@]}"; do
     if [[ $s =~ \<svg ]]; then
-      if [[ $EXT == pic && ( $arg_width != 0 || $arg_height != 0 ) ]]; then
-        # remove width and height
-        if   [[ $s =~ \ width\ *=\ *\"[^\"]*\" ]]; then
-          s=${s/"${BASH_REMATCH[0]}"/\ }
-        elif [[ $s =~ \ width\ *=\ *\'[^\']*\' ]]; then
-          s=${s/"${BASH_REMATCH[0]}"/\ }
-        fi
-        if   [[ $s =~ \ height\ *=\ *\"[^\"]*\" ]]; then
-          s=${s/"${BASH_REMATCH[0]}"/\ }
-        elif [[ $s =~ \ height\ *=\ *\'[^\']*\' ]]; then
-          s=${s/"${BASH_REMATCH[0]}"/\ }
+      if [[ $EXT == pic || $EXT == gp ]]; then
+        if [[ $arg_width != 0 || $arg_height != 0 ]]; then
+          # remove width and height (original size)
+          if   [[ $s =~ \ width\ *=\ *\"[^\"]*\" ]]; then
+            s=${s/"${BASH_REMATCH[0]}"/\ }
+          elif [[ $s =~ \ width\ *=\ *\'[^\']*\' ]]; then
+            s=${s/"${BASH_REMATCH[0]}"/\ }
+          fi
+          if   [[ $s =~ \ height\ *=\ *\"[^\"]*\" ]]; then
+            s=${s/"${BASH_REMATCH[0]}"/\ }
+          elif [[ $s =~ \ height\ *=\ *\'[^\']*\' ]]; then
+            s=${s/"${BASH_REMATCH[0]}"/\ }
+          fi
         fi
       fi
       if [[ -n "$2" ]]; then # append style
@@ -342,6 +359,8 @@ ${BASH_REMATCH[3]}"
         elif [[ $s =~ ^(<svg\ .*style\ *=\ *\')([^\']*)(\'.*)$ ]]; then
           s="${BASH_REMATCH[1]}${BASH_REMATCH[2]:+${BASH_REMATCH[2]/%;/};}$2\
 ${BASH_REMATCH[3]}"
+        elif [[ $s =~ ^(<svg\ )(.*)$ ]]; then
+          s="${BASH_REMATCH[1]}style='$2' ${BASH_REMATCH[2]}"
         fi
       fi
       [[ -n "$3" ]] && s="${s/<svg/<svg role="img" aria-label="$3"}" # alt text
@@ -441,6 +460,7 @@ _pikfit() {
   case $EXT in
   pikchr) [[ $arg_margin != 0 ]] && a+=("margin = $arg_margin;") ;;
   pic) [[ $flg_enclose != false ]] && a=(".PS" "${a[@]}" ".PE") ;;
+  gp) a=("set term svg $arg_term_opts" "${a[@]}") ;;
   *) quit "Internal error: unknown extension: $EXT"
   esac
   dels+=("'$arg_file_'")
@@ -468,6 +488,7 @@ _pikfit() {
   case $EXT in
   pikchr) opts+=("--svg-only") ;;
   pic) opts+=("-v") ;;
+  gp) ;;
   *) quit "Internal error: unknown extension: $EXT"
   esac
   "$CMD" "${opts[@]}" "$arg_file_" \

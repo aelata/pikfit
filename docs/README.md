@@ -103,7 +103,7 @@ move left 0.3 from V.w # manually expand bbox to the left for text V_0
 You can include and execute a file written in the pic language with `@import` of MPE.
 
 ```markdown
-@import "fig.pikchr" {cmd=env args=[pikchr] output=html}
+@import "fig.pikchr" {cmd=env args=[pikfit] output=html}
 ```
 
 ## See also
