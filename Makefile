@@ -10,10 +10,8 @@ endif
 # ENTRANCE and TARGET are tracked in gh-pages but not in main (.gitignore)
 ENTRANCE = README.txt docs/index.html
 TARGET = $(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
-# IMG is tracked both in main and gh-pages
-IMG = $(shell find docs -name '*.png') # -or -name '*.jpg'
 
-PAGES = $(ENTRANCE) $(TARGET) $(IMG)
+PAGES = $(ENTRANCE) $(TARGET)
 
 all: $(TARGET)
 
@@ -28,7 +26,6 @@ gh-pages:
 		git switch main && \
 		git branch -D gh-pages 2>/dev/null || true && \
 		git switch --orphan gh-pages && \
-		git restore --source=main --overlay -- $(IMG) && \
 		git add -f $(PAGES) && \
 		git commit -m "Update html" && \
 		git switch main && \
