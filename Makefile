@@ -2,8 +2,8 @@
 #   This Makefile only checks whether any file in TARGET needs to be updated.
 #   Run "Export > HTML > HTML (cdn hosted)" in the preview of VS Code to update.
 
-#   $(ENTRANCE) and $(TARGEt) should be included .gitignore of main branch
-#   Use SVG images which will be embedded into HTML files.
+#   $(PAGES) must be included in .gitignore of the main branch.
+#   In Markdown files, use SVG images which will be embedded into HTML files.
 #   imginsvg is found here:
 #     https://gist.github.com/aelata/3ded90b6a6859c466b59b8b25eb0b0f2
 
