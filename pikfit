@@ -232,6 +232,8 @@ _parse_args() { # $@: args
 }
 
 parse_args() { # parse script arguments ($@)
+  local s
+
   args=() && array_append_str args "$PIKFIT_OPTS" # from environment variable
   (( 1 < $# )) && args+=("${@:1:$#-1}") # from command line (except the last)
 
@@ -282,11 +284,10 @@ parse_args() { # parse script arguments ($@)
     quit "$SCRIPT: file not found: $arg_file"
   fi
 
-  local s
-  s=$(basename "$arg_file" ".$EXT")
   [[ $arg_prefix == "-" ]] && arg_prefix="." flg_prefix=false
+  s=$(basename "$arg_file" ".$EXT")
   if [[ $arg_prefix == "." ]]; then
-    arg_prefix=$PWD/$s
+    arg_prefix=${PWD/%\//}/$s
   else
     [[ $arg_prefix == */ && ! -d $arg_prefix ]] &&
       quit "$SCRIPT: directory not found: $arg_prefix"
@@ -305,13 +306,14 @@ parse_args() { # parse script arguments ($@)
     arg_file_=${arg_file_/%.$EXT/_.$EXT}
   done
 
-  [[ $arg_alt == "-" ]] && arg_alt=$arg_capt
+  [[ ! $arg_class =~ ^[A-Za-z_][-A-Za-z0-9_]*$ ]] &&
+    quit "$SCRIPT: unacceptable class name: $arg_class"
 
-  arg_class=$(html_echo "$arg_class")
-  arg_height=$(html_echo "$arg_height")
-  arg_width=$(html_echo "$arg_width")
+  [[ $arg_alt == "-" ]] && arg_alt=$arg_capt
   arg_alt=$(html_echo "$arg_alt")
   arg_capt=$(html_echo "$arg_capt")
+  arg_height=$(html_echo "$arg_height")
+  arg_width=$(html_echo "$arg_width")
 }
 
 # put_svg - print a svg file while replacing some patterns
@@ -321,13 +323,14 @@ put_svg() { # $1: filename, $2: additional style, $3: alternative text
   # make <svg> in one line
   b=()
   for s in "${a[@]}"; do
-    t=$s
-    [[ $t =~ \<svg ]] && b+=("") flg_svg=true
+    [[ $s =~ \<svg ]] && b+=("") flg_svg=true
     if [[ $flg_svg != false ]]; then
-      b[${#b[@]}-1]+=$s
+      b[${#b[@]}-1]+=" $s"
+      t=$s
       while [[ $t =~ \"[^\"]*\" ]]; do t=${t/"${BASH_REMATCH[0]}"/}; done
       while [[ $t =~ \'[^\']*\' ]]; do t=${t/"${BASH_REMATCH[0]}"/}; done
-      [[ $t =~ \> ]] && flg_svg=false
+      [[ $t =~ \> ]] && # right angle bracket found in unquoted string
+        b[${#b[@]}-1]=${b[${#b[@]}-1]/# <svg /<svg } flg_svg=false
     else
       b+=("$s")
     fi
@@ -449,7 +452,7 @@ put_err_txt() { # $1: filename
   a=() && array_append_file a "$1"
   (( ${#a[@]} )) || return
   local sty="white-space:pre-wrap;background-color:${PIKFIT_ERR_BG_COL-#FDD};"
-  echo "<pre class='pikfit-err' style='$sty'>"
+  echo "<pre class='${arg_class}-err' style='$sty'>"
   html_echo "${a[@]}"
   echo "</pre>"
 }
