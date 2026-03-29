@@ -144,7 +144,7 @@ You can include and execute a file written in the pic language with `@import` of
 ## Options
 
 `-o PREFIX`
-: Set the output directory/file (without extension) to *`PREFIX`*. This option saves output to an SVG file when `-A N` is used, or to an HTML file otherwise.
+: Set the output directory/file (without extension) to *`PREFIX`*. This implies `--save`.
 
 `-A {L|C|R|N}`
 : Set the horizontal alignment of a figure. You can use the following values: `L` Left, `C` Center, `R` Right, and `N` No alignment. The default value is `C`.
@@ -193,6 +193,12 @@ You can include and execute a file written in the pic language with `@import` of
 
 `--m4-args ARGS`
 : Set arguments for `m4` to *`ARGS`*. This option implies `--m4`.
+
+`--html`
+: Save HTML output. This implies `--save`.
+
+`--save`
+: Save output to a file.
 
 `--pikchr`
 : Use `pikchr` as a pic engine (default). This option resets the previous setting by `--cmd`.

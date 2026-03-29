@@ -22,30 +22,52 @@ END
 
     The status should be success
     The output should include "<figure"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
-  It 'saves output to an HTML file with "-o PREFIX".'
+  It 'saves output with "--save".'
+    When run $CMD --save test.pikchr
+
+    The status should be success
+    The output should include "</svg>"
+    The output should end with "</figure>"
+    The contents of file "test.svg" should end with "</svg>"
+    The contents of file "test.svg" should not include "</figure>"
+  End
+  rm -f test.svg
+
+  It 'saves output to an SVG file with "-o PREFIX".'
     When run $CMD -o out test.pikchr
 
     The status should be success
     The output should include "</svg>"
-    The output should include "</figure>"
-    The contents of file "out.html" should include "</svg>"
-    The contents of file "out.html" should include "</figure>"
-  End
-  rm -f out.html
-
-  It 'saves output to an SVG file with "-A N -o PREFIX".'
-    When run $CMD -A N -o out test.pikchr
-
-    The status should be success
-    The output should include "</svg>"
-    The output should not include "</figure>"
-    The contents of file "out.svg" should include "</svg>"
+    The output should end with "</figure>"
+    The contents of file "out.svg" should end with "</svg>"
     The contents of file "out.svg" should not include "</figure>"
   End
   rm -f out.svg
+
+  It 'saves output to an HTML file with "--html -o PREFIX".'
+    When run $CMD --html -o out test.pikchr
+
+    The status should be success
+    The output should include "</svg>"
+    The output should end with "</figure>"
+    The contents of file "out.html" should include "</svg>"
+    The contents of file "out.html" should end with "</figure>"
+  End
+  rm -f out.html
+
+  It 'saves output to an HTML file with "--html -A N -o PREFIX".'
+    When run $CMD --html -A N -o out test.pikchr
+
+    The status should be success
+    The output should end with "</svg>"
+    The output should not include "</figure>"
+    The contents of file "out.html" should end with "</svg>"
+    The contents of file "out.html" should not include "</figure>"
+  End
+  rm -f out.html
 
   It 'center-aligns a figure by default or with "-A C".'
     When run $CMD test.pikchr
@@ -53,7 +75,7 @@ END
     The status should be success
     The output should include \
   "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;margin:auto"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'left-aligns a figure with "-A L".'
@@ -62,7 +84,7 @@ END
     The status should be success
     The output should include \
   "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;margin-right:auto"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'right-aligns a figure with "-A R".'
@@ -71,7 +93,7 @@ END
     The status should be success
     The output should include \
   "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;margin-left:auto"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'does not aligns a figure (no "<figure>" tag) with "-A N".'
@@ -80,6 +102,7 @@ END
     The status should be success
     The output should include \
   "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;'"
+    The output should end with "</svg>"
     The output should not include "</figure>"
   End
 
@@ -88,6 +111,7 @@ END
 
     The status should be success
     The output should include "<figure class='pikfit' "
+    The output should end with "</figure>"
   End
 
   It 'sets the class to use with "-C CLASS".'
@@ -95,13 +119,16 @@ END
 
     The status should be success
     The output should include "<figure class='pikfit_0' "
+    The output should end with "</figure>"
   End
 
   It 'keeps intermediate files with "-K".'
     When run $CMD -K test.pikchr
 
     The status should be success
-    The output should include "</figure>"
+    The file "test_.cout" should be exist
+    The file "test_.cerr" should be exist
+    The output should end with "</figure>"
   End
   rm -f test_.{pikchr,cout,cerr}
 
@@ -111,6 +138,7 @@ END
     The status should be success
     The output should include \
   "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;font-family:sans-serif;'"
+    The output should end with "</svg>"
   End
 
   It 'sets the width of a figure with "-W WIDTH".'
@@ -119,7 +147,7 @@ END
     The status should be success
     The output should include \
 "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;width:50%;"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'sets alternative text with "--alt=TEXT".'
@@ -127,7 +155,7 @@ END
 
     The status should be success
     The output should include '<svg role="img" aria-label="example" '
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'sets a figure caption with "--caption=TEXT".'
@@ -136,7 +164,7 @@ END
     The status should be success
     The output should include '<svg role="img" aria-label="example" '
     The output should include '>example</figcaption>'
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'defines ".hide" with "--dothide".'
@@ -145,7 +173,7 @@ END
     The status should be success
     The output should include "<style> .hide { display: none; } </style>"
     The output should include "<svg "
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'preprocesses code with "--m4".'
@@ -153,7 +181,7 @@ END
 
     The status should be success
     The output should include ">Hi!</text>"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'sets arguments for "m4" with "--m4-args=ARGS".'
@@ -161,7 +189,7 @@ END
 
     The status should be success
     The output should include ">Hi!</text>"
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'uses pikchr as a pic engine with "--pikchr" (default).'
@@ -170,14 +198,14 @@ END
     The status should be success
     The output should include 'class="pikchr"'
     The output should include 'data-pikchr-date='
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'sets margin with "-M MARGIN" for pikchr.'
     When run $CMD -K -M 1mm test.pikchr
 
     The status should be success
-    The output should include "</figure>"
+    The output should end with "</figure>"
     The contents of file "test_.pikchr" should include "margin = 1mm;"
   End
   rm -f test_.{pikchr,cout,cerr}
@@ -187,7 +215,7 @@ END
 
     The status should be success
     The output should include '<!-- Creator: dpic'
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'adds ".PS" and ".PE" before and after code with "--enclose" for dpic.'
@@ -195,7 +223,7 @@ END
 
     The status should be success
     The output should include "<svg "
-    The output should include "</figure>"
+    The output should end with "</figure>"
   End
 
   It 'shows usage without arguments.'

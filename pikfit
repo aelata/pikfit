@@ -2,7 +2,7 @@
 
 # pikfit - wrap pikchr/dpic/gnuplot output in a <figure> tag
 VERSION="\
-pikfit version 0.9.0
+pikfit version 1.0.0
 
 (c) 2026 aelata
 This script is licensed under the MIT No Attribution (MIT-0) License.
@@ -97,7 +97,6 @@ SCRIPT=$(basename "$SCRIPT0")
 CMD=pikchr # CMD=dpic # default command
 
 arg_prefix="."           # -o PREFIX
-flg_prefix=false         #   keep output file
 arg_align="C"            # -A {L|C|R|N}
 arg_class="pikfit"       # -C CLASS
 arg_height="0"           # -H HEIGHT
@@ -114,6 +113,8 @@ arg_cmd=$CMD             # --cmd PATH
 flg_dothide=false        # --dothide
 flg_m4=false             # --m4
 arg_m4=""                # --m4-args ARGS
+flg_html=false           #  --html
+flg_save=false           #  --save
 
 # pikchr
 arg_margin="0"           # -M MARGIN
@@ -130,7 +131,7 @@ $SCRIPT - wrap pikchr/dpic/gnuplot output in a <figure> tag
 Usage: $SCRIPT [options] file
 
 Options:
-  -o PREFIX       Set an output directory/file prefix and save the output file
+  -o PREFIX       Set an output directory/file prefix (This implies --save)
   -A {L|C|R|N}    Set figure alignment; Left|Center|Right|No ["$arg_align"]
   -C CLASS        Set the class name of a figure ["$arg_class"]
   -H HEIGHT       Set a figure height (0: auto/original) ["$arg_height"]
@@ -150,17 +151,19 @@ Options:
   --cmd PATH      Set the path of the command
   --dothide       Define the "hide" class
   --m4            Preprocess code with m4
-  --m4-args ARGS  Set arguments for m4 (This option implies --m4)
+  --m4-args ARGS  Set arguments for m4 (This implies --m4)
+  --html          Save HTML output (This implies --save)
+  --save          Save output to a file
   --              Option-end delimiter
   -h, --help      Show this message and exit
   -v, --version   Show version information and exit
   -n, --dry-run   Do nothing and exit
 
-  --pikchr        Use pikchr as a pic engine (This option resets --cmd)
+  --pikchr        Use pikchr as a pic engine (This resets --cmd)
     -M MARGIN     Add a margin (pikchr only) ["$arg_margin"]
-  --dpic          Use dpic as a pic engine (This option resets --cmd)
+  --dpic          Use dpic as a pic engine (This resets --cmd)
     --enclose     Add ".PS" and ".PE" before and after code (dpic only)
-  --gnuplot       Use gnuplot (This option resets --cmd)
+  --gnuplot       Use gnuplot (This resets --cmd)
     --term-opts OPTS
                   Set terminal options for SVG output (gnuplot only)
 
@@ -180,7 +183,7 @@ _parse_args() { # $@: args
         --caption | --caption-align | --caption-text-align | --m4-args | \
         -M | --term-opts)
           prev=$1 ;;
-        -o) prev=$1 flg_prefix=true ;;
+        -o) prev=$1 flg_save=true ;;
         -K) flg_keep=true ;;
         --alt=*) arg_alt=${1#*=} ;;
         --caption=*) arg_capt=${1#*=} ;;
@@ -196,6 +199,10 @@ _parse_args() { # $@: args
         --m4) flg_m4=true ;;
         --no-m4) flg_m4=false ;;
         --m4-args=*) arg_m4=${1#*=} flg_m4=true ;;
+        --html) flg_html=true flg_save=true ;;
+        --no-html) flg_html=false ;;
+        --save) flg_save=true ;;
+        --no-save) flg_save=false ;;
         # command specific options
         --pikchr) CMD=pikchr arg_cmd=$CMD ;;
           --dark-mode) flg_dark_mode=true opts+=("$1") ;;
@@ -209,7 +216,7 @@ _parse_args() { # $@: args
       esac
     else
       case $prev in
-        -o) arg_prefix=$1 flg_prefix=true ;;
+        -o) arg_prefix=$1 flg_save=true ;;
         -A) arg_align=$1 ;;
         -C) arg_class=$1 ;;
         -H) arg_height=$1 ;;
@@ -285,7 +292,7 @@ parse_args() { # parse script arguments ($@)
     quit "$SCRIPT: file not found: $arg_file"
   fi
 
-  [[ $arg_prefix == "-" ]] && arg_prefix="." flg_prefix=false
+  [[ $arg_prefix == "-" ]] && arg_prefix="." flg_save=false
   s=$(basename "$arg_file" ".$EXT")
   if [[ $arg_prefix == "." ]]; then
     arg_prefix=${PWD/%\//}/$s
@@ -510,13 +517,12 @@ _pikfit() {
     echo "<style> .hide { display: none; } </style>"
 
   if [[ $result == 0 ]]; then
-    if [[ $flg_prefix == false ]]; then
+    if [[ $flg_html == false ]]; then
       put_fig "$prefix.cout"
+      [[ $flg_save != false ]] && cp "$prefix.cout" "$arg_prefix.svg"
     else
-      local ext="svg"
-      [[ $arg_align != N ]] && ext="html"
-      put_fig "$prefix.cout" >"$arg_prefix.$ext"
-      cat "$arg_prefix.$ext"
+      put_fig "$prefix.cout" >"$arg_prefix.html"
+      cat "$arg_prefix.html"
     fi
   else
     if   [[ -s "$prefix.cerr" ]]; then
