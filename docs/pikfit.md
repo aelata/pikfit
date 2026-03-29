@@ -2,7 +2,7 @@
 
 <style>code { white-space: pre-wrap !important; } </style>
 
-With `pikfit`, you can easily embed figures written in the pic language into a Markdown document. You can use [pikchr](https://pikchr.org) or [dpic](https://www.ece.uwaterloo.ca/~aplevich/dpic) as a pic engine and optionally [m4](https://www.gnu.org/software/m4) as a macro processor. You can also use [gnuplot](http://www.gnuplot.info) in place of a pic engine. Embedding the figures uses the [code chunk](https://shd101wyy.github.io/markdown-preview-enhanced/#/code-chunk) feature of [Markdown Preview Enhanced (MPE)](https://shd101wyy.github.io/markdown-preview-enhanced), an extension for [Visual Studio Code (VS Code)](https://code.visualstudio.com). `pikfit` is a bash script that wraps `pikchr`/`dpic` output in a `<figure>` tag.
+With `pikfit`, you can easily embed figures written in the pic language into a Markdown document. You can use [pikchr](https://pikchr.org) or [dpic](https://www.ece.uwaterloo.ca/~aplevich/dpic) as a pic engine and optionally [m4](https://www.gnu.org/software/m4) as a macro processor. Embedding the figures uses the [code chunk](https://shd101wyy.github.io/markdown-preview-enhanced/#/code-chunk) feature of [Markdown Preview Enhanced (MPE)](https://shd101wyy.github.io/markdown-preview-enhanced), an extension for [Visual Studio Code (VS Code)](https://code.visualstudio.com). `pikfit` is a bash script that wraps `pikchr` or `dpic` output in a `<figure>` tag. You can also use [gnuplot](http://www.gnuplot.info) as a wrapped command.
 
 ```tcl {cmd=env args=[pikfit -H 8lh --caption "Flow diagram of pikfit" --dothide] output=html .hide}
 arrow " md" ljust down 1.5cm; A: box "MPE" "(VS Code)";
@@ -31,7 +31,7 @@ arrow down 0.75cm from 1/2 <D.s, D.se> " pic" ljust;
 
     In the VS Code settings, `Markdown-preview-enhanced: Enable Script Execution` must be selected; it is not selected by default.
 
-* run the `pikchr`, `dpic`, or `gnuplot` command
+* run the `pikchr` or `dpic` command
 
     On Windows, you can copy `pikchr.exe` from [the binary package of pikchr](https://packages.msys2.org/base/mingw-w64-pikchr) to `/usr/bin` in the Git for Windows environment. You can copy `dpic.exe` from [here](https://ece.uwaterloo.ca/~aplevich/dpic/Windows).
     On macOS, you may have to build `pikchr` from source. You can install `dpic` with [Homebrew](https://formulae.brew.sh/formula/dpic).
@@ -124,7 +124,7 @@ move left 0.3 from V.w # manually expand bbox to the left for text V_0
 
 ### gnuplot
 
-You can use `gnuplot` in place of a pic engine with `--gnuplot`. Specifying `--term-opts`*`OPTS`* sets the terminal options for SVG output.
+You can use `gnuplot` as a wrapped command with `--gnuplot`. Specifying `--term-opts`*`OPTS`* sets the terminal options of `gnuplot`.
 
 ```tcl {cmd=env args=[pikfit -H 10lh --gnuplot --term-opts='font "Times" fontscale 2'] output=html}
 # {cmd=env args=[pikfit -H 10lh --gnuplot --term-opts='font "Times" fontscale 2'] output=html}
@@ -144,7 +144,7 @@ You can include and execute a file written in the pic language with `@import` of
 ## Options
 
 `-o PREFIX`
-: Set the output directory/file (without extension) to *`PREFIX`*. The output file is saved.
+: Set the output directory/file (without extension) to *`PREFIX`*. This option saves output to an SVG file when `-A N` is used, or to an HTML file otherwise.
 
 `-A {L|C|R|N}`
 : Set the horizontal alignment of a figure. You can use the following values: `L` Left, `C` Center, `R` Right, and `N` No alignment. The default value is `C`.
@@ -157,6 +157,9 @@ You can include and execute a file written in the pic language with `@import` of
 
 `-K`
 : Keep intermediate files.
+
+`-S STYLE`
+: Add style to svg tag.
 
 `-W WIDTH`
 : Set the width of a figure to *`WIDTH`*. The value `0` means the full width for `pikchr` and the original width for `dpic`. The default value is `0`.
@@ -209,9 +212,12 @@ You can include and execute a file written in the pic language with `@import` of
 `--term-opts OPTS`
 : Set terminal options for SVG output of `gnuplot`.
 
+`--`
+: Option-end delimiter. Arguments after `--` are passed to the wrapped command.
+
 Additionally, the following options are available if specified as the first argument: `-h`, `--help` (show usage and exit), `-v`, `--version` (show version information and exit), and `-n`, `--dry-run` (do nothing and exit).
 
-Other options are passed to `pikchr`, `dpic`, or `gnuplot`. For this behavior, short options cannot be combined (use `-K -A R` instead of `-KA R`, for example). Also, a short option and its argument must be separated by spaces (use `-A R` instead of `-AR`, for example).
+Other options are passed to the wrapped command. For this behavior, short options cannot be combined (use `-K -A R` instead of `-KA R`, for example). Also, a short option and its argument must be separated by spaces (use `-A R` instead of `-AR`, for example).
 
 ## Environment variables
 

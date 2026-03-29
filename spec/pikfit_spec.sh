@@ -25,12 +25,25 @@ END
     The output should include "</figure>"
   End
 
-  It 'saves output to the file with "-o PREFIX".'
+  It 'saves output to an HTML file with "-o PREFIX".'
     When run $CMD -o out test.pikchr
 
     The status should be success
+    The output should include "</svg>"
     The output should include "</figure>"
+    The contents of file "out.html" should include "</svg>"
+    The contents of file "out.html" should include "</figure>"
+  End
+  rm -f out.html
+
+  It 'saves output to an SVG file with "-A N -o PREFIX".'
+    When run $CMD -A N -o out test.pikchr
+
+    The status should be success
+    The output should include "</svg>"
+    The output should not include "</figure>"
     The contents of file "out.svg" should include "</svg>"
+    The contents of file "out.svg" should not include "</figure>"
   End
   rm -f out.svg
 
@@ -92,14 +105,13 @@ END
   End
   rm -f test_.{pikchr,cout,cerr}
 
-  It 'keeps intermediate files with "-M MARGIN".'
-    When run $CMD -K -M 1mm test.pikchr
+  It 'adds style to svg with "-S STYLE".'
+    When run $CMD -A N -S "font-family:sans-serif;" test.pikchr
 
     The status should be success
-    The output should include "</figure>"
-    The contents of file "test_.pikchr" should include "margin = 1mm;"
+    The output should include \
+  "<svg xmlns='http://www.w3.org/2000/svg' style='font-size:initial;font-family:sans-serif;'"
   End
-  rm -f test_.{pikchr,cout,cerr}
 
   It 'sets the width of a figure with "-W WIDTH".'
     When run $CMD -W 50% test.pikchr
@@ -127,31 +139,6 @@ END
     The output should include "</figure>"
   End
 
-  It 'uses pikchr as a pic engine with "--pikchr" (default).'
-    When run $CMD --pikchr test.pikchr
-
-    The status should be success
-    The output should include 'class="pikchr"'
-    The output should include 'data-pikchr-date='
-    The output should include "</figure>"
-  End
-
-  It 'uses dpic as a pic engine with "--dpic".'
-    When run $CMD --dpic test.pic
-
-    The status should be success
-    The output should include '<!-- Creator: dpic'
-    The output should include "</figure>"
-  End
-
-  It 'adds ".PS" and ".PE" before and after code with "--enclose".'
-    When run $CMD --dpic --enclose test.pikchr
-
-    The status should be success
-    The output should include "<svg "
-    The output should include "</figure>"
-  End
-
   It 'defines ".hide" with "--dothide".'
     When run $CMD --dothide test.pikchr
 
@@ -174,6 +161,40 @@ END
 
     The status should be success
     The output should include ">Hi!</text>"
+    The output should include "</figure>"
+  End
+
+  It 'uses pikchr as a pic engine with "--pikchr" (default).'
+    When run $CMD --pikchr test.pikchr
+
+    The status should be success
+    The output should include 'class="pikchr"'
+    The output should include 'data-pikchr-date='
+    The output should include "</figure>"
+  End
+
+  It 'sets margin with "-M MARGIN" for pikchr.'
+    When run $CMD -K -M 1mm test.pikchr
+
+    The status should be success
+    The output should include "</figure>"
+    The contents of file "test_.pikchr" should include "margin = 1mm;"
+  End
+  rm -f test_.{pikchr,cout,cerr}
+
+  It 'uses dpic as a pic engine with "--dpic".'
+    When run $CMD --dpic test.pic
+
+    The status should be success
+    The output should include '<!-- Creator: dpic'
+    The output should include "</figure>"
+  End
+
+  It 'adds ".PS" and ".PE" before and after code with "--enclose" for dpic.'
+    When run $CMD --dpic --enclose test.pikchr
+
+    The status should be success
+    The output should include "<svg "
     The output should include "</figure>"
   End
 
