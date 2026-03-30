@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# pikfit - wrap pikchr/dpic/gnuplot output in a <figure> tag
+# pikfit - wrap pikchr/dpic output in a <figure> tag
 VERSION="\
-pikfit version 1.0.0
+pikfit version 1.0.1
 
 (c) 2026 aelata
 This script is licensed under the MIT No Attribution (MIT-0) License.
@@ -126,7 +126,7 @@ arg_term_opts=""         # --term-opts OPTS
 
 usage() {
   cat <<END
-$SCRIPT - wrap pikchr/dpic/gnuplot output in a <figure> tag
+$SCRIPT - wrap pikchr/dpic output in a <figure> tag
 
 Usage: $SCRIPT [options] file
 
@@ -165,7 +165,7 @@ Options:
     --enclose     Add ".PS" and ".PE" before and after code (dpic only)
   --gnuplot       Use gnuplot (This resets --cmd)
     --term-opts OPTS
-                  Set terminal options for SVG output (gnuplot only)
+                  Set terminal options for SVG output of gnuplot
 
   Other options are passed to pikchr/dpic/gnuplot
   Default options: PIKFIT_OPTS ["$PIKFIT_OPTS"]
@@ -179,9 +179,9 @@ _parse_args() { # $@: args
     if [[ -z "$prev" ]]; then
       case $1 in
         --) shift; break ;;
-        -A | -C | -H | -S | -W | --alt | --cmd | \
-        --caption | --caption-align | --caption-text-align | --m4-args | \
-        -M | --term-opts)
+        -A | -C | -H | -S | -W | --alt | \
+        --caption | --caption-align | --caption-text-align | \
+        --cmd | --m4-args | -M | --term-opts)
           prev=$1 ;;
         -o) prev=$1 flg_save=true ;;
         -K) flg_keep=true ;;
@@ -206,7 +206,8 @@ _parse_args() { # $@: args
         # command specific options
         --pikchr) CMD=pikchr arg_cmd=$CMD ;;
           --dark-mode) flg_dark_mode=true opts+=("$1") ;;
-          --no-dark-mode) flg_dark_mode=false opts=("${opts[@]/--dark-mode/}") ;;
+          --no-dark-mode)
+            flg_dark_mode=false opts=("${opts[@]/--dark-mode/}") ;;
         --dpic) CMD=dpic arg_cmd=$CMD ;;
           --enclose) flg_enclose=true ;;
           --no-enclose) flg_enclose=false ;;
@@ -231,7 +232,7 @@ _parse_args() { # $@: args
         # command specific options
         -M) arg_margin=$1 ;;
         --term-opts) arg_term_opts=$1 ;;
-        *) quit "$SCRIPT: internal error: $prev $1"
+        *) quit "$SCRIPT: Internal error: $prev $1"
       esac
       prev=""
     fi
@@ -239,6 +240,17 @@ _parse_args() { # $@: args
   done
   [[ -z "$prev" ]] || quit "$SCRIPT: missing argument for \"$prev\""
   while (( $# )); do opts+=("$1"); shift; done
+}
+
+# echo_align - normalize alignment
+echo_align() { # $1: alignment
+  local s=$1
+  case $s in
+    [Ll] | [Ll]eft | LEFT) s="L" ;;
+    [Cc] | [Cc]enter | CENTER) s="C" ;;
+    [Rr] | [Rr]ight | RIGHT) s="R" ;;
+  esac
+  echo "$s"
 }
 
 parse_args() { # parse script arguments ($@)
@@ -276,15 +288,6 @@ parse_args() { # parse script arguments ($@)
   esac
   command -v "$CMD" &>/dev/null || quit "$SCRIPT: \"$CMD\" not found"
 
-  local -r re1="^[-+]?([0-9]|[.][0-9])"
-  local -r re2="^[-+]?([0-9]*)[.]?([0-9]*)(in|cm|px|pt|pc|mm)?$"
-  if [[ $arg_margin =~ $re1 && $arg_margin =~ $re2 ]]; then
-    (( ${BASH_REMATCH[1]:-0} == 0 && ${BASH_REMATCH[2]:-0} == 0 )) &&
-      arg_margin=0
-  else
-    quit "$SCRIPT: invalid margin: -M $arg_margin"
-  fi
-
   arg_file=${!#} # the last argument
   if [[ ! -f $arg_file ]]; then
     [[ ${arg_file:0:1} != "/" && ${arg_file:1:1} != ":" ]] && # not full path
@@ -314,16 +317,25 @@ parse_args() { # parse script arguments ($@)
     arg_file_=${arg_file_/%.$EXT/_.$EXT}
   done
 
-  [[ ! $arg_class =~ ^[A-Za-z_][-A-Za-z0-9_]*$ ]] &&
-    quit "$SCRIPT: unacceptable class name: -C $arg_class"
-
+ arg_align=$(echo_align "$arg_align")
   case $arg_align in
-    [Ll] | [Ll]eft | LEFT) arg_align="L" ;;
-    [Cc] | [Cc]enter | CENTER) arg_align="C" ;;
-    [Rr] | [Rr]ight | RIGHT) arg_align="R" ;;
+    L | C | R) ;;
     [Nn] | [Nn]o | NO) arg_align="N" ;;
     *) quit "$SCRIPT: unsupported alignment: -A $arg_align"
   esac
+
+  [[ ! $arg_class =~ ^[A-Za-z_][-A-Za-z0-9_]*$ ]] &&
+    quit "$SCRIPT: unacceptable class name: -C $arg_class"
+
+  local -r re1="^[-+]?([0-9]|[.][0-9])"
+  local -r re2="^[-+]?([0-9]*)[.]?([0-9]*)(in|cm|px|pt|pc|mm)?$"
+  if [[ $arg_margin =~ $re1 && $arg_margin =~ $re2 ]]; then
+    (( ${BASH_REMATCH[1]:-0} == 0 && ${BASH_REMATCH[2]:-0} == 0 )) &&
+      arg_margin=0
+  else
+    quit "$SCRIPT: invalid margin: -M $arg_margin"
+  fi
+
   [[ $arg_alt == "-" ]] && arg_alt=$arg_capt
   arg_alt=$(html_echo "$arg_alt")
   arg_capt=$(html_echo "$arg_capt")
@@ -390,17 +402,6 @@ ${BASH_REMATCH[3]}"
   printf "%s\n" "${a[@]}"
 }
 
-# echo_align - normalize alignment
-echo_align() { # $1: alignment
-  local s=$1
-  case $s in
-  [Ll] | [Ll]eft) s="L" ;;
-  [Cc] | [Cc]enter) s="C" ;;
-  [Rr] | [Rr]ight) s="R" ;;
-  esac
-  echo "$s"
-}
-
 # put_fig - print a figure file
 put_fig() { # $1: filename
   [[ -s "$1" ]] || return
@@ -426,36 +427,35 @@ display:flex;flex-direction:column;margin:auto;"
     [[ $flg_dark_mode != false ]] &&
       sty_fig+="color:white;background-color:black;"
 
-    local sty_cap
+    local sty_capt
     [[ $arg_capt_align == "-" ]] && arg_capt_align=$arg_align
     arg_capt_align=$(echo_align "$arg_capt_align")
     if [[ $flg_capt_wrap == false ]]; then
       case $arg_capt_align in
-        L) sty_cap+="margin-right:auto;" ;;
-        C) sty_cap+="margin:auto;" ;;
-        R) sty_cap+="margin-left:auto;" ;;
+        L) sty_capt+="margin-right:auto;" ;;
+        C) sty_capt+="margin:auto;" ;;
+        R) sty_capt+="margin-left:auto;" ;;
         *) quit "$SCRIPT: unsupported alignment: --caption-align $arg_capt_align"
       esac
     else
-      sty_cap+=$sty_svg
+      sty_capt+=$sty_svg
     fi
 
     [[ $arg_capt_text_align == "-" ]] && arg_capt_text_align=$arg_capt_align
     arg_capt_text_align=$(echo_align "$arg_capt_text_align")
     case $arg_capt_text_align in
-      L) sty_cap+="text-align:left;" ;;
-      C) sty_cap+="text-align:center;" ;;
-      R) sty_cap+="text-align:right;" ;;
+      L) sty_capt+="text-align:left;" ;;
+      C) sty_capt+="text-align:center;" ;;
+      R) sty_capt+="text-align:right;" ;;
       *) quit "$SCRIPT: unsupported alignment: \
 --caption-text-align $arg_capt_text_align"
     esac
 
+    local -r capt="<figcaption style='$sty_capt'>$arg_capt</figcaption>"
     echo "<figure class='$arg_class' style='$sty_fig'>"
-    [[ -n "$arg_capt" && $flg_capt_top != false ]] &&
-      echo "<figcaption style='$sty_cap'>$arg_capt</figcaption>"
+    [[ -n "$arg_capt" && $flg_capt_top != false ]] && echo "$capt"
     put_svg "$1" "$sty_svg" "$arg_alt"
-    [[ -n "$arg_capt" && $flg_capt_top == false ]] &&
-      echo "<figcaption style='$sty_cap'>$arg_capt</figcaption>"
+    [[ -n "$arg_capt" && $flg_capt_top == false ]] && echo "$capt"
     echo "</figure>"
   else
     put_svg "$1" "$sty_svg" "$arg_alt"
@@ -466,7 +466,8 @@ display:flex;flex-direction:column;margin:auto;"
 put_err_txt() { # $1: filename
   a=() && array_append_file a "$1"
   (( ${#a[@]} )) || return
-  local sty="white-space:pre-wrap;background-color:${PIKFIT_ERR_BG_COL-#FDD};"
+  local -r sty=\
+"white-space:pre-wrap;background-color:${PIKFIT_ERR_BG_COL-#FDD};"
   echo "<pre class='${arg_class}-err' style='$sty'>"
   html_echo "${a[@]}"
   echo "</pre>"
@@ -479,7 +480,7 @@ _pikfit() {
     pikchr) [[ $arg_margin != 0 ]] && a+=("margin = $arg_margin;") ;;
     pic) [[ $flg_enclose != false ]] && a=(".PS" "${a[@]}" ".PE") ;;
     gp) a=("set term svg $arg_term_opts" "${a[@]}") ;;
-    *) quit "Internal error: unknown extension: $EXT"
+    *) quit "$SCRIPT: Internal error: unknown extension: $EXT"
   esac
   dels+=("'$arg_file_'")
   printf "%s\n" "${a[@]}" >"$arg_file_"
@@ -507,7 +508,7 @@ _pikfit() {
     pikchr) opts+=("--svg-only") ;;
     pic) opts+=("-v") ;;
     gp) ;;
-    *) quit "Internal error: unknown extension: $EXT"
+    *) quit "$SCRIPT: Internal error: unknown extension: $EXT"
   esac
   "$CMD" "${opts[@]}" "$arg_file_" \
     </dev/null 1>"$prefix.cout" 2>"$prefix.cerr"
