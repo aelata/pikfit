@@ -2,7 +2,7 @@
 
 With `pikfit`, you can easily embed figures written in the pic language into a Markdown document. You can use [pikchr](https://pikchr.org) or [dpic](https://www.ece.uwaterloo.ca/~aplevich/dpic) as a pic engine and optionally [m4](https://www.gnu.org/software/m4) as a macro processor. Embedding the figures uses the [code chunk](https://shd101wyy.github.io/markdown-preview-enhanced/#/code-chunk) feature of [Markdown Preview Enhanced (MPE)](https://shd101wyy.github.io/markdown-preview-enhanced), an extension for [Visual Studio Code (VS Code)](https://code.visualstudio.com). `pikfit` is a bash script that wraps `pikchr` or `dpic` output in a `<figure>` tag.
 
-<IMG src="pikfit.svg" alt="Preview of a figure written in the pic language in Visual Studio Code" style="width:75%;display:block;margin:auto;">
+![Preview of a figure written in the pic language in Visual Studio Code](pikfit.png "Preview of a figure written in the pic language in Visual Studio Code")
 
 ## Requirements
 

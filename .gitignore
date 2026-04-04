@@ -1,5 +1,5 @@
 /docs/**/*.html
-/docs/**/*.png
+/docs/**/*.svg
 /README.txt
 /*.md
 /pikfit.sh

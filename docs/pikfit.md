@@ -144,7 +144,7 @@ You can include and execute a file written in the pic language with `@import` of
 ## Options
 
 `-o PREFIX`
-: Set the output directory/file (without extension) to *`PREFIX`*. This implies `--save`.
+: Set an output directory/file (without extension) to *`PREFIX`* and save the file.
 
 `-A {L|C|R|N}`
 : Set the horizontal alignment of a figure. You can use the following values: `L` Left, `C` Center, `R` Right, and `N` No alignment. The default value is `C`.
@@ -159,7 +159,7 @@ You can include and execute a file written in the pic language with `@import` of
 : Keep intermediate files.
 
 `-S STYLE`
-: Add style to svg tag.
+: Add style to an SVG tag.
 
 `-W WIDTH`
 : Set the width of a figure to *`WIDTH`*. The value `0` means the full width for `pikchr` and the original width for `dpic`. The default value is `0`.
@@ -195,10 +195,7 @@ You can include and execute a file written in the pic language with `@import` of
 : Set arguments for `m4` to *`ARGS`*. This option implies `--m4`.
 
 `--html`
-: Save HTML output. This implies `--save`.
-
-`--save`
-: Save output to a file.
+: Save HTML output.
 
 `--pikchr`
 : Use `pikchr` as a pic engine (default). This option resets the previous setting by `--cmd`.
@@ -221,7 +218,7 @@ You can include and execute a file written in the pic language with `@import` of
 `--`
 : Option-end delimiter. Arguments after `--` are passed to the wrapped command.
 
-Additionally, the following options are available if specified as the first argument: `-h`, `--help` (show usage and exit), `-v`, `--version` (show version information and exit), and `-n`, `--dry-run` (do nothing and exit).
+Additionally, the following options are available if specified as the first argument: `-h`, `--help` (show usage and exit), `-v`, `--version` (show version information and exit), and `-n` (do nothing and exit).
 
 Other options are passed to the wrapped command. For this behavior, short options cannot be combined (use `-K -A R` instead of `-KA R`, for example). Also, a short option and its argument must be separated by spaces (use `-A R` instead of `-AR`, for example).
 

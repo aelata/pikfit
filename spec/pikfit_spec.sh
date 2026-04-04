@@ -25,17 +25,6 @@ END
     The output should end with "</figure>"
   End
 
-  It 'saves output with "--save".'
-    When run $CMD --save test.pikchr
-
-    The status should be success
-    The output should include "</svg>"
-    The output should end with "</figure>"
-    The contents of file "test.svg" should end with "</svg>"
-    The contents of file "test.svg" should not include "</figure>"
-  End
-  rm -f test.svg
-
   It 'saves output to an SVG file with "-o PREFIX".'
     When run $CMD -o out test.pikchr
 
@@ -47,27 +36,29 @@ END
   End
   rm -f out.svg
 
-  It 'saves output to an HTML file with "--html -o PREFIX".'
-    When run $CMD --html -o out test.pikchr
+  It 'saves output to an HTML file with "--html".'
+    When run $CMD --html test.pikchr
 
     The status should be success
     The output should include "</svg>"
     The output should end with "</figure>"
-    The contents of file "out.html" should include "</svg>"
-    The contents of file "out.html" should end with "</figure>"
+    The contents of file "test.html" should include "</svg>"
+    The contents of file "test.html" should end with "</figure>"
   End
-  rm -f out.html
+  rm -f test.html
 
-  It 'saves output to an HTML file with "--html -A N -o PREFIX".'
-    When run $CMD --html -A N -o out test.pikchr
+  It 'saves output to SVG and HTML files with "-o PREFIX --html -A N".'
+    When run $CMD -o out --html -A N test.pikchr
 
     The status should be success
     The output should end with "</svg>"
     The output should not include "</figure>"
+    The contents of file "out.svg" should end with "</svg>"
+    The contents of file "out.svg" should not include "</figure>"
     The contents of file "out.html" should end with "</svg>"
     The contents of file "out.html" should not include "</figure>"
   End
-  rm -f out.html
+  rm -f out.svg out.html
 
   It 'center-aligns a figure by default or with "-A C".'
     When run $CMD test.pikchr
@@ -132,7 +123,7 @@ END
   End
   rm -f test_.{pikchr,cout,cerr}
 
-  It 'adds style to svg with "-S STYLE".'
+  It 'adds style to an SVG tag with "-S STYLE".'
     When run $CMD -A N -S "font-family:sans-serif;" test.pikchr
 
     The status should be success
@@ -247,7 +238,7 @@ END
     The output should start with "pikfit version"
   End
 
-  It 'does nothing and exits with "-n" or "--dry-run" as the first argument.'
+  It 'does nothing and exits with "-n" as the first argument.'
     When run $CMD -n
 
     The status should be success

@@ -1,15 +1,16 @@
 # Makefile for GitHUb Pages with Markdown Preview Enhanced
-#   This Makefile only checks whether any file in TARGET needs to be updated.
-#   Run "Export > HTML > HTML (cdn hosted)" in the preview of VS Code to update.
-
-#   $(PAGES) must be included in .gitignore of the main branch.
-#   In Markdown files, use SVG images which will be embedded into HTML files.
-#   imginsvg is found here:
-#     https://gist.github.com/aelata/3ded90b6a6859c466b59b8b25eb0b0f2
 
 # (c) 2026 aelata
 # This script is licensed under the MIT No Attribution (MIT-0) License.
 # https://opensource.org/license/mit-0
+
+# This Makefile only checks whether any file in TARGET needs to be updated.
+# Run "Export > HTML > HTML (cdn hosted)" in the preview of VS Code to update.
+
+# $(PAGES) must be included in .gitignore of the main branch.
+# In Markdown files, use SVG images which will be embedded into HTML files.
+# imginsvg is found here:
+#   https://gist.github.com/aelata/3ded90b6a6859c466b59b8b25eb0b0f2
 
 MFD := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 CWD := $(shell pwd)/
@@ -20,22 +21,22 @@ endif
 # ENTRANCE and TARGET are tracked in gh-pages but not in main (.gitignore)
 ENTRANCE = README.txt docs/index.html
 TARGET = $(shell find docs -name '*.md' | sed -e 's/\.md/\.html/')
-# IMG =  $(shell find docs -name '*.png' | sed -e 's/\.png/\.svg/')
+IMG =  $(shell find docs -name '*.png' | sed -e 's/\.png/\.svg/')
 # IMG += $(shell find docs -name '*.jpg' | sed -e 's/\.jpg/\.svg/')
 
 PAGES = $(ENTRANCE) $(TARGET)
 
-all: $(TARGET) # $(IMG)
+all: $(TARGET) $(IMG)
 
 %.html: %.md
 	@echo $@ is out of date.
 #	pandoc -o $@ $< # pandoc does not embed SVG images
 
-# %.svg: %.png
-# 	imginsvg $< > $@
+%.svg: %.png
+	@imginsvg $< > $@
 
 # %.svg: %.jpg
-# 	imginsvg $< > $@
+# 	@imginsvg $< > $@
 
 clean:
 	rm -f $(TARGET)

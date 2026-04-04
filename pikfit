@@ -2,7 +2,7 @@
 
 # pikfit - wrap pikchr/dpic output in a <figure> tag
 VERSION="\
-pikfit version 1.0.1
+pikfit version 2.0.0
 
 (c) 2026 aelata
 This script is licensed under the MIT No Attribution (MIT-0) License.
@@ -97,6 +97,7 @@ SCRIPT=$(basename "$SCRIPT0")
 CMD=pikchr # CMD=dpic # default command
 
 arg_prefix="."           # -o PREFIX
+flg_save=false           #   save output file
 arg_align="C"            # -A {L|C|R|N}
 arg_class="pikfit"       # -C CLASS
 arg_height="0"           # -H HEIGHT
@@ -113,8 +114,7 @@ arg_cmd=$CMD             # --cmd PATH
 flg_dothide=false        # --dothide
 flg_m4=false             # --m4
 arg_m4=""                # --m4-args ARGS
-flg_html=false           #  --html
-flg_save=false           #  --save
+flg_html=false           # --html
 
 # pikchr
 arg_margin="0"           # -M MARGIN
@@ -131,12 +131,12 @@ $SCRIPT - wrap pikchr/dpic output in a <figure> tag
 Usage: $SCRIPT [options] file
 
 Options:
-  -o PREFIX       Set an output directory/file prefix (This implies --save)
+  -o PREFIX       Set an output directory/file prefix and save the output file
   -A {L|C|R|N}    Set figure alignment; Left|Center|Right|No ["$arg_align"]
   -C CLASS        Set the class name of a figure ["$arg_class"]
   -H HEIGHT       Set a figure height (0: auto/original) ["$arg_height"]
   -K              Keep intermediate files
-  -S STYLE        Add style to svg tag
+  -S STYLE        Add style to an SVG tag
   -W WIDTH        Set a figure width (0: full/original) ["$arg_width"]
   --alt TEXT      Set alternative text (-: caption) ["$arg_alt"]
   --caption TEXT  Add a figure caption ["$arg_capt"]
@@ -152,12 +152,11 @@ Options:
   --dothide       Define the "hide" class
   --m4            Preprocess code with m4
   --m4-args ARGS  Set arguments for m4 (This implies --m4)
-  --html          Save HTML output (This implies --save)
-  --save          Save output to a file
+  --html          Save HTML output
   --              Option-end delimiter
   -h, --help      Show this message and exit
   -v, --version   Show version information and exit
-  -n, --dry-run   Do nothing and exit
+  -n              Do nothing and exit
 
   --pikchr        Use pikchr as a pic engine (This resets --cmd)
     -M MARGIN     Add a margin (pikchr only) ["$arg_margin"]
@@ -199,10 +198,8 @@ _parse_args() { # $@: args
         --m4) flg_m4=true ;;
         --no-m4) flg_m4=false ;;
         --m4-args=*) arg_m4=${1#*=} flg_m4=true ;;
-        --html) flg_html=true flg_save=true ;;
+        --html) flg_html=true ;;
         --no-html) flg_html=false ;;
-        --save) flg_save=true ;;
-        --no-save) flg_save=false ;;
         # command specific options
         --pikchr) CMD=pikchr arg_cmd=$CMD ;;
           --dark-mode) flg_dark_mode=true opts+=("$1") ;;
@@ -246,9 +243,10 @@ _parse_args() { # $@: args
 echo_align() { # $1: alignment
   local s=$1
   case $s in
-    [Ll] | [Ll]eft | LEFT) s="L" ;;
-    [Cc] | [Cc]enter | CENTER) s="C" ;;
-    [Rr] | [Rr]ight | RIGHT) s="R" ;;
+    [Ll] | [Ll]eft | LEFT) s="left" ;;
+    [Cc] | [Cc]enter | CENTER) s="center" ;;
+    [Rr] | [Rr]ight | RIGHT) s="right" ;;
+    [Nn] | [Nn]o | NO) s="no" ;;
   esac
   echo "$s"
 }
@@ -261,7 +259,7 @@ parse_args() { # parse script arguments ($@)
 
   # Unusual options (valid only as the first argument)
   [[ $1 == "-h" || $1 == "--help" || $# == 0 ]] && { usage; exit 0; }
-  [[ $1 == "-n" || $1 == "--dry-run" ]] && {
+  [[ $1 == "-n" ]] && {
     # echo "${PIKFIT_OPTS:+PIKFIT_OPTS=\"$PIKFIT_OPTS\" }$SCRIPT0$(printf " %q" "$@")"
     exit 0
   }
@@ -317,10 +315,9 @@ parse_args() { # parse script arguments ($@)
     arg_file_=${arg_file_/%.$EXT/_.$EXT}
   done
 
- arg_align=$(echo_align "$arg_align")
+  arg_align=$(echo_align "$arg_align")
   case $arg_align in
-    L | C | R) ;;
-    [Nn] | [Nn]o | NO) arg_align="N" ;;
+    left | center | right | no) ;;
     *) quit "$SCRIPT: unsupported alignment: -A $arg_align"
   esac
 
@@ -344,8 +341,8 @@ parse_args() { # parse script arguments ($@)
   arg_width=$(html_echo "$arg_width")
 }
 
-# put_svg - print a svg file while replacing some patterns
-put_svg() { # $1: filename, $2: additional style, $3: alternative text
+# put_svg - print an SVG file while replacing some patterns
+put_svg() { # $1: filename, $2: additional style
   local b s t flg_svg=false
   a=() && array_append_file a "$1"
   # make <svg> in one line
@@ -368,7 +365,7 @@ put_svg() { # $1: filename, $2: additional style, $3: alternative text
   a=()
   for s in "${b[@]}"; do
     if [[ $s =~ \<svg ]]; then
-      if [[ $EXT == pic || $EXT == gp ]]; then
+      if [[ $EXT != pikchr ]]; then
         if [[ $arg_width != 0 || $arg_height != 0 ]]; then
           # remove width and height (original size)
           if   [[ $s =~ \ width\ *=\ *\"[^\"]*\" ]]; then
@@ -395,7 +392,8 @@ ${BASH_REMATCH[3]}"
           s="${BASH_REMATCH[1]}style='$2' ${BASH_REMATCH[2]}"
         fi
       fi
-      [[ -n "$3" ]] && s="${s/<svg/<svg role="img" aria-label="$3"}" # alt text
+      [[ -n "$arg_alt" ]] &&
+        s="${s/<svg/<svg role="img" aria-label="$arg_alt"}"
     fi
     a+=("$s")
   done
@@ -413,15 +411,15 @@ put_fig() { # $1: filename
     sty_svg+="height:$arg_height;"
 
   case $arg_align in
-    L) sty_svg+="margin-right:auto;" ;;
-    C) sty_svg+="margin:auto;" ;;
-    R) sty_svg+="margin-left:auto;" ;;
-    N) ;;
+    left) sty_svg+="margin-right:auto;" ;;
+    center) sty_svg+="margin:auto;" ;;
+    right) sty_svg+="margin-left:auto;" ;;
+    no) ;;
     *) quit "$SCRIPT: Internal error: unsupported alignment: -A $arg_align"
   esac
   [[ -n $arg_style ]] && sty_svg+=$arg_style
 
-  if [[ $arg_align != N ]]; then
+  if [[ $arg_align != no ]]; then
     local sty_fig="break-inside:avoid;\
 display:flex;flex-direction:column;margin:auto;"
     [[ $flg_dark_mode != false ]] &&
@@ -432,9 +430,9 @@ display:flex;flex-direction:column;margin:auto;"
     arg_capt_align=$(echo_align "$arg_capt_align")
     if [[ $flg_capt_wrap == false ]]; then
       case $arg_capt_align in
-        L) sty_capt+="margin-right:auto;" ;;
-        C) sty_capt+="margin:auto;" ;;
-        R) sty_capt+="margin-left:auto;" ;;
+        left) sty_capt+="margin-right:auto;" ;;
+        center) sty_capt+="margin:auto;" ;;
+        right) sty_capt+="margin-left:auto;" ;;
         *) quit "$SCRIPT: unsupported alignment: --caption-align $arg_capt_align"
       esac
     else
@@ -444,9 +442,7 @@ display:flex;flex-direction:column;margin:auto;"
     [[ $arg_capt_text_align == "-" ]] && arg_capt_text_align=$arg_capt_align
     arg_capt_text_align=$(echo_align "$arg_capt_text_align")
     case $arg_capt_text_align in
-      L) sty_capt+="text-align:left;" ;;
-      C) sty_capt+="text-align:center;" ;;
-      R) sty_capt+="text-align:right;" ;;
+      left | center | right) sty_capt+="text-align:$arg_capt_text_align;" ;;
       *) quit "$SCRIPT: unsupported alignment: \
 --caption-text-align $arg_capt_text_align"
     esac
@@ -458,7 +454,7 @@ display:flex;flex-direction:column;margin:auto;"
     [[ -n "$arg_capt" && $flg_capt_top == false ]] && echo "$capt"
     echo "</figure>"
   else
-    put_svg "$1" "$sty_svg" "$arg_alt"
+    put_svg "$1" "$sty_svg"
   fi
 }
 
@@ -518,9 +514,9 @@ _pikfit() {
     echo "<style> .hide { display: none; } </style>"
 
   if [[ $result == 0 ]]; then
+    [[ $flg_save != false ]] && cp "$prefix.cout" "$arg_prefix.svg"
     if [[ $flg_html == false ]]; then
       put_fig "$prefix.cout"
-      [[ $flg_save != false ]] && cp "$prefix.cout" "$arg_prefix.svg"
     else
       put_fig "$prefix.cout" >"$arg_prefix.html"
       cat "$arg_prefix.html"
